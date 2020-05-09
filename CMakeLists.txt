@@ -1,3 +1,12 @@
+#---------------------------------------------------------------------------#
+# Copyright (c) 2018-2020 Mikhail Komarov <nemo@nil.foundation>
+# Copyright (c) 2020 Nikita Kaskov <nbering@nil.foundation>
+#
+# Distributed under the Boost Software License, Version 1.0
+# See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt
+#---------------------------------------------------------------------------#
+
 cmake_minimum_required(VERSION 2.8.11)
 
 cmake_policy(SET CMP0042 NEW)
@@ -7,7 +16,7 @@ if(NOT ${CMAKE_WORKSPACE_NAME} STREQUAL crypto3)
     cm_workspace(crypto3)
 endif()
 
-cm_project(pubkey WORKSPACE_NAME ${CMAKE_WORKSPACE_NAME})
+cm_project(pubkey WORKSPACE_NAME ${CMAKE_WORKSPACE_NAME} LANGUAGES C CXX)
 
 cm_find_package(CM)
 include(CMDeploy)
@@ -17,11 +26,11 @@ if(NOT Boost_FOUND)
     cm_find_package(Boost REQUIRED)
 endif()
 
-cm_find_package(${CMAKE_WORKSPACE_NAME}_asn1)
+# cm_find_package(${CMAKE_WORKSPACE_NAME}_asn1)
 cm_find_package(${CMAKE_WORKSPACE_NAME}_codec)
 cm_find_package(${CMAKE_WORKSPACE_NAME}_hash)
 cm_find_package(${CMAKE_WORKSPACE_NAME}_modes)
-cm_find_package(${CMAKE_WORKSPACE_NAME}_pk_pad)
+# cm_find_package(${CMAKE_WORKSPACE_NAME}_pk_pad)
 cm_find_package(${CMAKE_WORKSPACE_NAME}_utilities)
 
 option(BUILD_TESTS "Build unit tests" FALSE)
@@ -61,8 +70,8 @@ list(APPEND ${CURRENT_PROJECT_NAME}_PUBLIC_HEADERS
      include//nil/crypto3/pubkey/ec_group/point_gfp.hpp
      include//nil/crypto3/pubkey/ec_group/point_mul.hpp)
 
-list(APPEND ${CURRENT_PROJECT_NAME}_PRIVATE_HEADERS
-     include/nil/crypto3/pubkey/detail/pk_ops_impl.hpp)
+#list(APPEND ${CURRENT_PROJECT_NAME}_PRIVATE_HEADERS
+#     include/nil/crypto3/pubkey/detail/pk_ops_impl.hpp)
 
 list(APPEND ${CURRENT_PROJECT_NAME}_UNGROUPED_SOURCES)
 
@@ -138,8 +147,8 @@ if(CRYPTO3_PUBKEY_RSA)
 
     list(APPEND ${CURRENT_PROJECT_NAME}_RSA_SOURCES)
 
-    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
-         ${CMAKE_WORKSPACE_NAME}::pk_pad)
+#    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
+#         ${CMAKE_WORKSPACE_NAME}::pk_pad)
 
     add_definitions(-D${CMAKE_UPPER_WORKSPACE_NAME}_HAS_RSA)
     list(APPEND ${CURRENT_PROJECT_NAME}_PUBLIC_HEADERS
@@ -154,8 +163,8 @@ if(CRYPTO3_PUBKEY_DSA)
 
     list(APPEND ${CURRENT_PROJECT_NAME}_DSA_SOURCES)
 
-    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
-         ${CMAKE_WORKSPACE_NAME}::pk_pad)
+#    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
+#         ${CMAKE_WORKSPACE_NAME}::pk_pad)
 
     add_definitions(-D${CMAKE_UPPER_WORKSPACE_NAME}_HAS_DSA)
     list(APPEND ${CURRENT_PROJECT_NAME}_PUBLIC_HEADERS
@@ -183,9 +192,9 @@ if(CRYPTO3_PUBKEY_ECDSA)
 
     list(APPEND ${CURRENT_PROJECT_NAME}_ECDSA_SOURCES)
 
-    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
-         ${CMAKE_WORKSPACE_NAME}::asn1
-         ${CMAKE_WORKSPACE_NAME}::pk_pad)
+#    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
+#         ${CMAKE_WORKSPACE_NAME}::asn1
+#         ${CMAKE_WORKSPACE_NAME}::pk_pad)
 
     add_definitions(-D${CMAKE_UPPER_WORKSPACE_NAME}_HAS_ECDSA)
     list(APPEND ${CURRENT_PROJECT_NAME}_PUBLIC_HEADERS
@@ -200,9 +209,9 @@ if(CRYPTO3_PUBKEY_ECGDSA)
 
     list(APPEND ${CURRENT_PROJECT_NAME}_ECGDSA_SOURCES)
 
-    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
-         ${CMAKE_WORKSPACE_NAME}::asn1
-         ${CMAKE_WORKSPACE_NAME}::pk_pad)
+#    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
+#         ${CMAKE_WORKSPACE_NAME}::asn1
+#         ${CMAKE_WORKSPACE_NAME}::pk_pad)
 
     add_definitions(-D${CMAKE_UPPER_WORKSPACE_NAME}_HAS_ECGDSA)
     list(APPEND ${CURRENT_PROJECT_NAME}_PUBLIC_HEADERS
@@ -249,8 +258,8 @@ if(CRYPTO3_PUBKEY_GOST_34_10_2001)
 
     list(APPEND ${CURRENT_PROJECT_NAME}_GOST_34_10_2001_SOURCES)
 
-    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
-         ${CMAKE_WORKSPACE_NAME}::asn1)
+#    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
+#         ${CMAKE_WORKSPACE_NAME}::asn1)
 
     add_definitions(-D${CMAKE_UPPER_WORKSPACE_NAME}_HAS_GOST_34_10_2001)
     list(APPEND ${CURRENT_PROJECT_NAME}_PUBLIC_HEADERS
@@ -279,8 +288,8 @@ if(CRYPTO3_PUBKEY_ECDH)
 
     list(APPEND ${CURRENT_PROJECT_NAME}_ECDH_SOURCES)
 
-    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
-         ${CMAKE_WORKSPACE_NAME}::asn1)
+#    list(APPEND ${CURRENT_PROJECT_NAME}_LIBRARIES
+#         ${CMAKE_WORKSPACE_NAME}::asn1)
 
     add_definitions(-D${CMAKE_UPPER_WORKSPACE_NAME}_HAS_ECDH)
     list(APPEND ${CURRENT_PROJECT_NAME}_PUBLIC_HEADERS
@@ -418,12 +427,12 @@ set_target_properties(${CMAKE_WORKSPACE_NAME}_${CURRENT_PROJECT_NAME} PROPERTIES
 
 target_link_libraries(${CMAKE_WORKSPACE_NAME}_${CURRENT_PROJECT_NAME} INTERFACE
                       ${${CURRENT_PROJECT_NAME}_LIBRARIES}
-                      ${CMAKE_WORKSPACE_NAME}::asn1
+#                      ${CMAKE_WORKSPACE_NAME}::asn1
                       ${CMAKE_WORKSPACE_NAME}::codec
                       ${CMAKE_WORKSPACE_NAME}::hash
                       ${CMAKE_WORKSPACE_NAME}::modes
-                      ${CMAKE_WORKSPACE_NAME}::pk_pad
-                      ${CMAKE_WORKSPACE_NAME}::utilities
+#                      ${CMAKE_WORKSPACE_NAME}::pk_pad
+#                      ${CMAKE_WORKSPACE_NAME}::utilities
 
                       boost::multiprecision
 
@@ -441,4 +450,4 @@ cm_deploy(TARGETS ${CMAKE_WORKSPACE_NAME}_${CURRENT_PROJECT_NAME}
 
 if(BUILD_TESTS)
     add_subdirectory(test)
-endif()
+endif() 
