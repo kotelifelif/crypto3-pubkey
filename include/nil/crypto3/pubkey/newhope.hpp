@@ -9,8 +9,6 @@
 #ifndef CRYPTO3_PUBKEY_NEWHOPE_HPP
 #define CRYPTO3_PUBKEY_NEWHOPE_HPP
 
-#include <nil/crypto3/utilities/memory_operations.hpp>
-
 namespace nil {
     namespace crypto3 {
         namespace pubkey {

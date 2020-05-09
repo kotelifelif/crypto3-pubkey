@@ -10,8 +10,8 @@
 #define CRYPTO3_PUBKEY_DL_PARAM_HPP
 
 #include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/jacobi.hpp>
-#include <boost/multiprecision/prime.hpp>
+//#include <boost/multiprecision/jacobi.hpp>
+//#include <boost/multiprecision/prime.hpp>
 
 #include <nil/crypto3/pubkey/dl_group/dl_group_info.hpp>
 #include <nil/crypto3/pubkey/pem.hpp>

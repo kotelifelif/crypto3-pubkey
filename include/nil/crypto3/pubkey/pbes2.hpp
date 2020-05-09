@@ -9,8 +9,6 @@
 #ifndef CRYPTO3_PUBKEY_PBE_PKCS_v20_HPP
 #define CRYPTO3_PUBKEY_PBE_PKCS_v20_HPP
 
-#include <nil/crypto3/asn1/alg_id.hpp>
-
 #include <chrono>
 
 namespace nil {

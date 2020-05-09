@@ -12,7 +12,6 @@
 #include <memory>
 
 #include <boost/multiprecision/number.hpp>
-#include <boost/multiprecision/prime.hpp>
 
 namespace nil {
     namespace crypto3 {

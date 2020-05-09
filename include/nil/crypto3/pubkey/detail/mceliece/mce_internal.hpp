@@ -9,9 +9,6 @@
 #ifndef CRYPTO3_PUBKEY_MCELIECE_INTERNAL_HPP
 #define CRYPTO3_PUBKEY_MCELIECE_INTERNAL_HPP
 
-#include <nil/crypto3/utilities/secmem.hpp>
-#include <nil/crypto3/utilities/types.hpp>
-
 #include <nil/crypto3/pubkey/pk_operations.hpp>
 #include <nil/crypto3/pubkey/mceliece.hpp>
 

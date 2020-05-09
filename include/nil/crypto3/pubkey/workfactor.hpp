@@ -9,8 +9,6 @@
 #ifndef CRYPTO3_PUBKEY_WORKFACTOR_HPP
 #define CRYPTO3_PUBKEY_WORKFACTOR_HPP
 
-#include <nil/crypto3/utilities/types.hpp>
-
 namespace nil {
     namespace crypto3 {
         namespace pubkey {

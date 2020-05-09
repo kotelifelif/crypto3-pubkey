@@ -13,8 +13,6 @@
 
 #include <nil/crypto3/pubkey/ec_group/curve_gfp.hpp>
 
-#include <nil/crypto3/utilities/exceptions.hpp>
-
 #include <vector>
 
 namespace nil {

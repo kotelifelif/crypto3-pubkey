@@ -13,7 +13,6 @@
 #include <string>
 
 #include <nil/crypto3/pubkey/xmss/xmss_tools.hpp>
-#include <nil/crypto3/utilities/secmem.hpp>
 
 namespace nil {
     namespace crypto3 {

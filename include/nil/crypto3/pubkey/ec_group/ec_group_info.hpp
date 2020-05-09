@@ -9,8 +9,6 @@
 #ifndef CRYPTO3_PUBKEY_EC_GROUP_INFO_HPP
 #define CRYPTO3_PUBKEY_EC_GROUP_INFO_HPP
 
-#include <nil/crypto3/asn1/asn1_oid.hpp>
-
 #include <boost/multiprecision/number.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/cpp_int/cpp_int_config.hpp>

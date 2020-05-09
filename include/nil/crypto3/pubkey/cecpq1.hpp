@@ -9,10 +9,8 @@
 #ifndef CRYPTO3_PUBKEY_CECPQ1_HPP
 #define CRYPTO3_PUBKEY_CECPQ1_HPP
 
-#include <nil/crypto3/utilities/secmem.hpp>
-
-#include <nil/crypto3/pubkey/newhope/newhope.hpp>
-#include <nil/crypto3/pubkey/curve25519/curve25519.hpp>
+#include <nil/crypto3/pubkey/newhope.hpp>
+#include <nil/crypto3/pubkey/curve25519.hpp>
 
 namespace nil {
     namespace crypto3 {

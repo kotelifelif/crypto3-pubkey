@@ -9,8 +9,6 @@
 #ifndef CRYPTO3_PUBKEY_POLYN_GF2M_HPP
 #define CRYPTO3_PUBKEY_POLYN_GF2M_HPP
 
-#include <nil/crypto3/utilities/secmem.hpp>
-
 #include <nil/crypto3/pubkey/detail/mceliece/gf2m_small_m.hpp>
 #include <nil/crypto3/pubkey/detail/mceliece/code_based_util.hpp>
 

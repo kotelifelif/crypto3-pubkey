@@ -10,9 +10,6 @@
 #define CRYPTO3_PUBKEY_XMSS_SIGNATURE_HPP
 
 #include <cstddef>
-#include <nil/crypto3/utilities/exceptions.hpp>
-#include <nil/crypto3/utilities/types.hpp>
-#include <nil/crypto3/utilities/secmem.hpp>
 
 #include <nil/crypto3/pubkey/xmss/xmss_parameters.hpp>
 #include <nil/crypto3/pubkey/xmss/xmss_wots_publickey.hpp>

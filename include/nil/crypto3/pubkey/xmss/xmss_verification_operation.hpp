@@ -14,8 +14,6 @@
 #include <iterator>
 #include <string>
 
-#include <nil/crypto3/utilities/types.hpp>
-
 #include <nil/crypto3/pubkey/pk_operations.hpp>
 
 #include <nil/crypto3/pubkey/xmss/xmss_publickey.hpp>

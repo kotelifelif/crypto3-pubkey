@@ -21,7 +21,6 @@
  */
 
 #include <nil/crypto3/pubkey/pk_keys.hpp>
-#include <nil/crypto3/utilities/secmem.hpp>
 
 namespace nil {
     namespace crypto3 {

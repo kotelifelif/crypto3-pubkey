@@ -17,8 +17,6 @@
 
 #include <nil/crypto3/pubkey/ec_group/curve_nist.hpp>
 
-#include <nil/crypto3/utilities/assert.hpp>
-
 namespace nil {
     namespace crypto3 {
         namespace pubkey {

@@ -9,9 +9,6 @@
 #ifndef CRYPTO3_PUBKEY_XMSS_INDEX_REGISTRY_HPP
 #define CRYPTO3_PUBKEY_XMSS_INDEX_REGISTRY_HPP
 
-#include <nil/crypto3/utilities/secmem.hpp>
-#include <nil/crypto3/utilities/mutex.hpp>
-
 #include <nil/crypto3/pubkey/xmss/atomic.hpp>
 
 namespace nil {

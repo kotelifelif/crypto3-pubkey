@@ -10,7 +10,6 @@
 #define CRYPTO3_PUBKEY_GF2M_SMALL_M_HPP
 
 #include <vector>
-#include <nil/crypto3/utilities/types.hpp>
 
 namespace nil {
     namespace crypto3 {

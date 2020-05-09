@@ -11,8 +11,6 @@
 
 #include <nil/crypto3/pubkey/detail/ed25519/ed25519_fe.hpp>
 
-#include <nil/crypto3/utilities/loadstore.hpp>
-
 namespace nil {
     namespace crypto3 {
         namespace {

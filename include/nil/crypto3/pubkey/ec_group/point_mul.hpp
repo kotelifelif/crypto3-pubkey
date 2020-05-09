@@ -15,8 +15,6 @@
 #include <nil/crypto3/pubkey/ec_group/curve_gfp.hpp>
 #include <nil/crypto3/pubkey/ec_group/point_gfp.hpp>
 
-#include <nil/crypto3/utilities/ct_utils.hpp>
-
 namespace nil {
     namespace crypto3 {
         namespace {

@@ -10,8 +10,6 @@
 #define CRYPTO3_PUBKEY_PKCS8_HPP
 
 #include <nil/crypto3/pubkey/pk_keys.hpp>
-#include <nil/crypto3/utilities/exceptions.hpp>
-#include <nil/crypto3/utilities/secmem.hpp>
 
 #include <functional>
 #include <chrono>

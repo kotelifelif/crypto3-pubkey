@@ -10,7 +10,6 @@
 #define CRYPTO3_PUBKEY_XMSS_COMMON_OPS_HPP
 
 #include <vector>
-#include <nil/crypto3/utilities/secmem.hpp>
 
 #include <nil/crypto3/pubkey/xmss/xmss_parameters.hpp>
 #include <nil/crypto3/pubkey/xmss/xmss_address.hpp>

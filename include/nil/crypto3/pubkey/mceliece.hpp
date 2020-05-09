@@ -12,8 +12,6 @@
 #include <nil/crypto3/pubkey/pk_keys.hpp>
 #include <nil/crypto3/pubkey/detail/mceliece/polyn_gf2m.hpp>
 
-#include <nil/crypto3/utilities/exceptions.hpp>
-
 namespace nil {
     namespace crypto3 {
         namespace pubkey {

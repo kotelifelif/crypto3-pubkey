@@ -15,9 +15,6 @@
 #include <iostream>
 #include <vector>
 
-#include <nil/crypto3/utilities/exceptions.hpp>
-#include <nil/crypto3/random/chacha_rng/chacha_rng.hpp>
-
 static const size_t max_fuzzer_input_size = 8192;
 
 extern void fuzz(const uint8_t in[], size_t len);

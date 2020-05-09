@@ -12,9 +12,6 @@
 #include <iterator>
 #include <type_traits>
 
-#include <nil/crypto3/utilities/cpuid/cpuid.hpp>
-#include <nil/crypto3/utilities/secmem.hpp>
-
 #if defined(CRYPTO3_TARGET_OS_HAS_THREADS)
 #include <thread>
 #include <chrono>

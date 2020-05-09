@@ -10,7 +10,6 @@
 #define CRYPTO3_PUBKEY_PK_KEY_FACTORY_HPP
 
 #include <nil/crypto3/pubkey/pk_keys.hpp>
-#include <nil/crypto3/asn1/alg_id.hpp>
 
 #include <memory>
 

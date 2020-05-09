@@ -19,8 +19,6 @@
 #include <nil/crypto3/pubkey/ec_group/point_gfp.hpp>
 #include <nil/crypto3/pubkey/pubkey.hpp>
 
-#include <nil/crypto3/utilities/secmem.hpp>
-
 namespace nil {
     namespace crypto3 {
         namespace pubkey {
