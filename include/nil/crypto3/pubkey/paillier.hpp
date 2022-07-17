@@ -38,9 +38,11 @@ using namespace std;
 namespace nil {
     namespace crypto3 {
         namespace pubkey {
+            pair<size_t, size_t> primes;
             // https://habr.com/ru/post/594135/
             // https://progler.ru/blog/kak-generirovat-bolshie-prostye-chisla-dlya-algoritma-rsa
             pair<size_t, size_t> generate_primes(const size_t bits) {
+                primes = make_pair(0, 0);
                 size_t value_bits_size = bits;
                 size_t min_value = pow(2, (value_bits_size - 1)) + 1;
                 size_t max_value = pow(2, value_bits_size) - 1;
@@ -67,13 +69,25 @@ namespace nil {
                 uniform_int_distribution<size_t> distribution(0, primes_numbers.size() - 1);
                 size_t p = primes_numbers[distribution(generator)];
                 size_t index = 0;
-                size_t q = primes_numbers[0];
+                size_t q = primes_numbers[index];
                 bool is_find = false;
-                while ((p == q) || (boost::math::gcd(p * q, (p - 1) * (q - 1)) != 1)) {
+                while (true) {
+                    if ((p != q) && (boost::math::gcd(p * q, (p - 1) * (q - 1)) == 1)) {
+                        primes = make_pair(p, q);
+                        return primes;
+                    }
                     index++;
+                    if (index == primes_numbers.size())
+                        break;
                     q = primes_numbers[index];
                 }
-                return make_pair(p, q);
+                return primes;
+            }
+            size_t generate_n() {
+                return primes.first * primes.second;
+            }
+            size_t generate_lambda() {
+                return boost::math::lcm(primes.first - 1, primes.second - 1);
             }
         }    // namespace pubkey
     }        // namespace crypto3
