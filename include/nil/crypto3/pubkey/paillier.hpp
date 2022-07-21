@@ -26,69 +26,108 @@
 #ifndef CRYPTO3_PUBKEY_PAILLIER_HPP
 #define CRYPTO3_PUBKEY_PAILLIER_HPP
 
-#include <cmath>
 #include <deque>
 #include <algorithm>
+
+#include <nil/crypto3/multiprecision/gmp.hpp>
+#include <nil/crypto3/multiprecision/cpp_int.hpp>
+#include <nil/crypto3/multiprecision/detail/default_ops.hpp>
+#include <boost/math/common_factor.hpp>
 #include <random>
 
-#include <boost/math/common_factor.hpp>
-
 using namespace std;
+using namespace nil::crypto3::multiprecision;
+
 
 namespace nil {
     namespace crypto3 {
         namespace pubkey {
-            pair<size_t, size_t> primes;
-            // https://habr.com/ru/post/594135/
-            // https://progler.ru/blog/kak-generirovat-bolshie-prostye-chisla-dlya-algoritma-rsa
-            pair<size_t, size_t> generate_primes(const size_t bits) {
-                primes = make_pair(0, 0);
-                size_t value_bits_size = bits;
-                size_t min_value = pow(2, (value_bits_size - 1)) + 1;
-                size_t max_value = pow(2, value_bits_size) - 1;
+            template<typename FieldType>
+            struct public_key {
+                typedef FieldType field_type;
 
-                // Sieve of Eratosthenes
-                deque<size_t> primes_numbers;
-                for (size_t i = 2; i <= max_value; i++) {
-                    primes_numbers.push_back(i);
-                }
-                for (size_t i = 2; i <= max_value; i++) {
-                    for (size_t j = 2 * i; j < max_value; j += i) {
-                        auto find_number = find(begin(primes_numbers), end(primes_numbers), j);
-                        if (find_number != end(primes_numbers)) {
-                            primes_numbers.erase(find_number);
-                        }
+                typedef typename field_type::value_type value_type;
+                
+                constexpr static const std::size_t key_bits = field_type::modulus_bits;
+                typedef typename field_type::modulus_type key_schedule_type;
+               
+                constexpr static const std::size_t signature_bits = field_type::modulus_bits * 2;
+                typedef std::tuple<value_type, value_type> signature_type;
+
+                inline static bool encrypt(const signature_type& val, const key_schedule_type& key) {
+                    number<Backend, ExpressionTemplates> m(msg, msg_len);
+
+                    if (m >= m_group.get_p()) {
+                        throw std::invalid_argument("Paillier encryption: Input is too large");
                     }
+
+                    const size_t k_bits = m_group.exponent_bits();
+                    const number<Backend, ExpressionTemplates> k(rng, k_bits);
+
+                    const number<Backend, ExpressionTemplates> a = m_group.power_g_p(k);
+                    const number<Backend, ExpressionTemplates> b = m_group.multiply_mod_p(m, m_powermod_y_p(k));
+
+                    return number<Backend, ExpressionTemplates>::encode_fixed_length_int_pair(a, b, m_group.p_bytes());
                 }
-                auto less_elements_iterator = remove_if(begin(primes_numbers), end(primes_numbers),
-                    [min_value](int value) {
-                        return value >= min_value;
-                    });
-                primes_numbers.erase(begin(primes_numbers), less_elements_iterator);
-                default_random_engine generator;
-                uniform_int_distribution<size_t> distribution(0, primes_numbers.size() - 1);
-                size_t p = primes_numbers[distribution(generator)];
-                size_t index = 0;
-                size_t q = primes_numbers[index];
-                bool is_find = false;
-                while (true) {
-                    if ((p != q) && (boost::math::gcd(p * q, (p - 1) * (q - 1)) == 1)) {
-                        primes = make_pair(p, q);
-                        return primes;
+            };
+
+            template<typename FieldType>
+            struct private_key {
+                typedef FieldType field_type;
+
+                typedef typename field_type::number_type number_type;
+                typedef typename field_type::value_type value_type;
+
+                constexpr static const std::size_t key_bits = field_type::modulus_bits;
+                typedef typename field_type::modulus_type key_type;
+
+                constexpr static const std::size_t key_schedule_bits = field_type::modulus_bits;
+                typedef typename field_type::modulus_type key_schedule_type;
+
+                constexpr static const std::size_t signature_bits = field_type::modulus_bits * 2;
+                typedef std::tuple<value_type, value_type> signature_type;
+
+                inline static bool decrypt(signature_type& res, const number_type& val, const key_schedule_type& key) {
+                    const dl_group m_group;
+                    fixed_exponent_power_mod m_powermod_x_p;
+                    blinder m_blinder;
+                    //---------
+                    m_group(key.get_group()), m_powermod_x_p(key.get_x(), m_group.get_p()),
+                        m_blinder(
+                            m_group.p(), rng, [](const number<Backend, ExpressionTemplates>& k) { return k; },
+                            [this](const number<Backend, ExpressionTemplates>& k) { return m_powermod_x_p(k); }) {
                     }
-                    index++;
-                    if (index == primes_numbers.size())
-                        break;
-                    q = primes_numbers[index];
+                    //---------
+                    m_y = m_group.power_g_p(m_x);
+
+                    const size_t p_bytes = m_group.p_bytes();
+
+                    if (msg_len != 2 * p_bytes) {
+                        throw std::invalid_argument("ElGamal decryption: Invalid message");
+                    }
+
+                    number<Backend, ExpressionTemplates> a(msg, p_bytes);
+                    const number<Backend, ExpressionTemplates> b(msg + p_bytes, p_bytes);
+
+                    if (a >= m_group.p() || b >= m_group.get_p()) {
+                        throw std::invalid_argument("ElGamal decryption: Invalid message");
+                    }
+
+                    a = m_blinder.blind(a);
+
+                    const number<Backend, ExpressionTemplates> r =
+                        m_group.multiply_mod_p(m_group.inverse_mod_p(m_powermod_x_p(a)), b);
+
+                    return number<Backend, ExpressionTemplates>::encode_1363(m_blinder.unblind(r), p_bytes);
                 }
-                return primes;
-            }
-            size_t generate_n() {
-                return primes.first * primes.second;
-            }
-            size_t generate_lambda() {
-                return boost::math::lcm(primes.first - 1, primes.second - 1);
-            }
+            };
+
+            template<typename FieldType>
+            struct paillier {
+                typedef FieldType field_type;
+                typedef public_key<field_type> public_key_type;
+                typedef private_key<field_type> private_key_type;
+            };
         }    // namespace pubkey
     }        // namespace crypto3
 }    // namespace nil
