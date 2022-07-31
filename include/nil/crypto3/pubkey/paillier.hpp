@@ -31,6 +31,9 @@
 #include <random>
 #include <iostream>
 #include <typeinfo>
+
+#include <boost/integer/mod_inverse.hpp>
+
 #include <nil/crypto3/multiprecision/random.hpp>
 #include <nil/crypto3/algebra/random_element.hpp>
 #include <nil/crypto3/algebra/fields/alt_bn128/base_field.hpp>
@@ -43,6 +46,7 @@ using namespace std;
 using namespace nil::crypto3::multiprecision;
 using namespace nil::crypto3::algebra;
 using namespace boost::math;
+using namespace boost::integer;
 using cpp_mod = nil::crypto3::multiprecision::cpp_mod;
 using cpp_int = nil::crypto3::multiprecision::cpp_int;
 using field = nil::crypto3::algebra::fields::alt_bn128_fq<254>;
@@ -53,7 +57,7 @@ namespace nil {
     namespace crypto3 {
         namespace pubkey {
             pair<value_type, value_type> primes;
-            deque<size_t> primes_numbers{2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 
+            deque<size_t> primes_numbers{ 2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
             31, 37, 41, 43, 47, 53, 59, 61, 67,
             71, 73, 79, 83, 89, 97, 101, 103,
             107, 109, 113, 127, 131, 137, 139,
@@ -61,8 +65,8 @@ namespace nil {
             181, 191, 193, 197, 199, 211, 223,
             227, 229, 233, 239, 241, 251, 257,
             263, 269, 271, 277, 281, 283, 293,
-            307, 311, 313, 317, 331, 337, 347, 349};
-            
+            307, 311, 313, 317, 331, 337, 347, 349 };
+
             // https://habr.com/ru/post/594135/
             // https://progler.ru/blog/kak-generirovat-bolshie-prostye-chisla-dlya-algoritma-rsa
             value_type get_low_level_prime(value_type min_value, value_type max_value) {
@@ -108,7 +112,22 @@ namespace nil {
             value_type lcm(value_type a, value_type b) {
                 return (a / gcd(a, b)) * b;
             }
-            
+
+            cpp_int pow(cpp_int value, cpp_int exponent) {
+                if (exponent <= 0)
+                    return 1;
+                else if (exponent == 1)
+                    return value;
+                else {
+                    if (exponent % 2 == 0) {
+                        return pow(value * value, exponent / 2);
+                    }
+                    else {
+                        return value * pow(value, exponent - 1);
+                    }
+                }
+            }
+
             pair<value_type, value_type> generate_primes(const size_t bits) {
                 primes = make_pair(value_type(7), value_type(11));
                 size_t value_bits_size(bits);
@@ -143,15 +162,15 @@ namespace nil {
                 return g;
             }
             value_type generate_mu() {
-                value_type n = generate_n();
+               value_type n = generate_n();
                 value_type g = generate_g();
                 value_type lambda = generate_lambda();
-                value_type first_part = g.pow(lambda.data);
-                value_type second_part = n.pow(2);
-                value_type u = value_type(cpp_int(cpp_mod(first_part.data.convert_to<cpp_int>(), second_part.data.convert_to<cpp_int>())));
-                value_type l_u = (u - 1) / n;
-                value_type mu = value_type(cpp_int(cpp_mod(l_u.inversed().data.convert_to<cpp_int>(), n.data.convert_to<cpp_int>())));
-                return mu;
+                cpp_int first_part = pow(g.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>());
+                cpp_int second_part = pow(n.data.convert_to<cpp_int>(), cpp_int(2));
+                cpp_int u = cpp_int(cpp_mod(first_part, second_part));
+                cpp_int l_u = (u - 1) / n.data.convert_to<cpp_int>();
+                value_type mu(mod_inverse(l_u, n.data.convert_to<cpp_int>()));
+                return value_type(mu);
             }
             pair<value_type, value_type> generate_private_key() {
                 return make_pair(generate_n(), generate_g());
@@ -164,12 +183,12 @@ namespace nil {
                 value_type n = generate_n();
                 mt19937 generator(time(0));
                 boost::random::uniform_int_distribution<cpp_int> distribution(1, n.data.convert_to<cpp_int>());
-                cpp_int value = distribution(generator);
-                value_type r(value);
+                cpp_int r = distribution(generator);
                 value_type g = generate_g();
-                value_type first_part = g.pow(message.data) * r.pow(n.data);
-                value_type second_part = n.pow(2);
-                value_type encrypt_message = value_type(cpp_int(cpp_mod(first_part.data.convert_to<cpp_int>(), second_part.data.convert_to<cpp_int>())));
+                cpp_int first_part = pow(g.data.convert_to<cpp_int>(), message.data.convert_to<cpp_int>()) * 
+                    pow(r,n.data.convert_to<cpp_int>());
+                cpp_int second_part = pow(n.data.convert_to<cpp_int>(), cpp_int(2));
+                value_type encrypt_message = value_type(cpp_int(cpp_mod(first_part, second_part)));
                 return encrypt_message;
             }
 
@@ -178,13 +197,12 @@ namespace nil {
                 if (message > n.pow(2)) {
                     return value_type(0);
                 }
+                value_type g = generate_g();
                 value_type lambda = generate_lambda();
-                value_type v = message.pow(lambda.data);
-                value_type first_part = value_type(cpp_int(cpp_mod(v.data.convert_to<cpp_int>(), n.pow(2).data.convert_to<cpp_int>())));
-                value_type second_part = n.pow(2);
-                value_type u = value_type(cpp_int(cpp_mod(first_part.data.convert_to<cpp_int>(), second_part.data.convert_to<cpp_int>())));
-                value_type l_u = (u - 1) / n;
-                value_type decrypt_message = value_type(cpp_int(cpp_mod((l_u * generate_lambda()).data.convert_to<cpp_int>(), n.data.convert_to<cpp_int>())));
+                value_type mu = generate_mu();
+                cpp_int u(cpp_mod(pow(message.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2))));
+                cpp_int l_u = (u - 1) / n.data.convert_to<cpp_int>();
+                value_type decrypt_message = value_type(cpp_int(cpp_mod(l_u * mu.data.convert_to<cpp_int>(), n.data.convert_to<cpp_int>())));
                 return decrypt_message;
             }
 
