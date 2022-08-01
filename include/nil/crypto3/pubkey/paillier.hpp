@@ -56,6 +56,10 @@ using data_type = nil::crypto3::algebra::fields::alt_bn128_fq<254>::value_type::
 namespace nil {
     namespace crypto3 {
         namespace pubkey {
+            value_type n;
+            value_type g;
+            value_type lambda;
+            value_type mu;
             pair<value_type, value_type> primes;
             deque<size_t> primes_numbers{ 2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
             31, 37, 41, 43, 47, 53, 59, 61, 67,
@@ -155,16 +159,15 @@ namespace nil {
             }
             value_type generate_g() {
                 boost::random::mt19937 generator(time(0));
-                value_type n = generate_n();
                 boost::random::uniform_int_distribution<cpp_int> distribution(cpp_int(1), n.pow(2).data.convert_to<cpp_int>());
                 cpp_int value = distribution(generator);
+                while (cpp_int(cpp_mod(pow(value, lambda.data.convert_to<cpp_int>()), n.data.convert_to<cpp_int>())) != cpp_int(1)) {
+                    value = distribution(generator);
+                }
                 value_type g(value);
                 return g;
             }
             value_type generate_mu() {
-               value_type n = generate_n();
-                value_type g = generate_g();
-                value_type lambda = generate_lambda();
                 cpp_int first_part = pow(g.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>());
                 cpp_int second_part = pow(n.data.convert_to<cpp_int>(), cpp_int(2));
                 cpp_int u = cpp_int(cpp_mod(first_part, second_part));
@@ -178,42 +181,52 @@ namespace nil {
             pair<value_type, value_type> generate_public_key() {
                 return make_pair(generate_lambda(), generate_mu());
             }
-
+            void generate_variables(size_t bits) {
+                primes = generate_primes(bits);
+                cout << "first_prime " << primes.first.data << endl;
+                cout << "second_prime " << primes.second.data << endl;
+                n = generate_n();
+                cout << "n " << n.data << endl;
+                lambda = generate_lambda();
+                cout << "lambda " << lambda.data << endl;
+                g = generate_g();
+                cout << "g " << g.data << endl;
+                mu = generate_mu();
+                cout << "mu " << mu.data << endl;
+            }
             value_type encrypt(value_type message) {
-                value_type n = generate_n();
+                if (message > n) {
+                    return value_type(0);
+                }
                 mt19937 generator(time(0));
                 boost::random::uniform_int_distribution<cpp_int> distribution(1, n.data.convert_to<cpp_int>());
                 cpp_int r = distribution(generator);
-                value_type g = generate_g();
-                cpp_int first_part = pow(g.data.convert_to<cpp_int>(), message.data.convert_to<cpp_int>()) * 
-                    pow(r,n.data.convert_to<cpp_int>());
+                cpp_int first_part = pow(g.data.convert_to<cpp_int>(), message.data.convert_to<cpp_int>()) *
+                    pow(r, n.data.convert_to<cpp_int>());
                 cpp_int second_part = pow(n.data.convert_to<cpp_int>(), cpp_int(2));
                 value_type encrypt_message = value_type(cpp_int(cpp_mod(first_part, second_part)));
                 return encrypt_message;
             }
 
             value_type decrypt(value_type message) {
-                value_type n = generate_n();
                 if (message > n.pow(2)) {
                     return value_type(0);
                 }
-                value_type g = generate_g();
-                value_type lambda = generate_lambda();
-                value_type mu = generate_mu();
                 cpp_int u(cpp_mod(pow(message.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2))));
                 cpp_int l_u = (u - 1) / n.data.convert_to<cpp_int>();
                 value_type decrypt_message = value_type(cpp_int(cpp_mod(l_u * mu.data.convert_to<cpp_int>(), n.data.convert_to<cpp_int>())));
                 return decrypt_message;
             }
 
-            /*template<typename hash>
-            pair<cpp_mod, cpp_mod> sign(hash function, hash message) {
-                cpp_mod first_part_s1 = ((pow(funcrion(message), generate_lambda()) % pow(generate_n(), 2)) - 1) / n;
-                cpp_mod second_part_s1 = ((generate_g(), generate_lambda()) % pow(generate_n(), 2)) - 1) / n;
-                cpp_mod s1 = (first_part_s1 / second_part_s1) % generate_n();
-                cpp_mod s2 = pow((function(message) * pow(generate_g, -s1)), ((1 / generate_n()) % generate_lambda)) % generate_n();
-                return make_pair(s1, s2);
-            }*/
+            //template<typename hash>
+            //pair<cpp_mod, cpp_mod> sign(hash function, hash message) {
+            //    cpp_mod first_part_s1 = ((pow(funcrion(message), generate_lambda()) % pow(generate_n(), 2)) - 1) / n;
+            //    
+            //    /*cpp_mod second_part_s1 = ((generate_g(), generate_lambda()) % pow(generate_n(), 2)) - 1) / n;
+            //    cpp_mod s1 = (first_part_s1 / second_part_s1) % generate_n();
+            //    cpp_mod s2 = pow((function(message) * pow(generate_g, -s1)), ((1 / generate_n()) % generate_lambda)) % generate_n();*/
+            //    return make_pair(0, 0);
+            //}
 
             /*template<typename hash>
             bool verify(hash function, hash message) {
