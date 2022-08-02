@@ -50,42 +50,43 @@ using field = nil::crypto3::algebra::fields::alt_bn128_fq<254>;
 namespace nil {
     namespace crypto3 {
         namespace pubkey {
-            //template <typename FieldType>
-            //struct algebraic_operations {
-            //    typedef FieldType::value_type value_type;
-            //    
-            //    value_type gcd(value_type a, value_type b) {
-            //        while (true) {
-            //            if (a == value_type(0)) {
-            //                return b;
-            //            }
-            //            b = value_type(cpp_int(cpp_mod(b.data.convert_to<cpp_int>(), a.data.convert_to<cpp_int>())));
-            //            if (b == value_type(0)) {
-            //                return a;
-            //            }
-            //            a = value_type(cpp_int(cpp_mod(a.data.convert_to<cpp_int>(), b.data.convert_to<cpp_int>())));
-            //        }
-            //    }
+            template <typename FieldType>
+            struct algebraic_operations {
+                typedef typename FieldType::value_type value_type;
+                typedef typename FieldType::value_type::data_type data_type;
+                
+                value_type gcd(value_type a, value_type b) {
+                    while (true) {
+                        if (a == value_type(0)) {
+                            return b;
+                        }
+                        b = value_type(cpp_int(cpp_mod(b.data.template convert_to<cpp_int>(), a.data.template convert_to<cpp_int>())));
+                        if (b == value_type(0)) {
+                            return a;
+                        }
+                        a = value_type(cpp_int(cpp_mod(a.data.template convert_to<cpp_int>(), b.data.template convert_to<cpp_int>())));
+                    }
+                }
 
-            //    value_type lcm(value_type a, value_type b) {
-            //        return (a / gcd(a, b)) * b;
-            //    }
+                value_type lcm(value_type a, value_type b) {
+                    return (a / gcd(a, b)) * b;
+                }
 
-            //    cpp_int pow(cpp_int value, cpp_int exponent) {
-            //        if (exponent <= 0)
-            //            return 1;
-            //        else if (exponent == 1)
-            //            return value;
-            //        else {
-            //            if (exponent % 2 == 0) {
-            //                return pow(value * value, exponent / 2);
-            //            }
-            //            else {
-            //                return value * pow(value, exponent - 1);
-            //            }
-            //        }
-            //    }
-            //};
+                cpp_int pow(cpp_int value, cpp_int exponent) {
+                    if (exponent <= 0)
+                        return 1;
+                    else if (exponent == 1)
+                        return value;
+                    else {
+                        if (exponent % 2 == 0) {
+                            return pow(value * value, exponent / 2);
+                        }
+                        else {
+                            return value * pow(value, exponent - 1);
+                        }
+                    }
+                }
+            };
         }    // namespace pubkey
     }        // namespace crypto3
 }    // namespace nil
