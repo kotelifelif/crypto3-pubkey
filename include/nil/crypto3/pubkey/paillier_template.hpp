@@ -61,24 +61,68 @@ namespace nil {
             template<typename FieldType, typename Generator>
             struct paillier_public_key {
                 typedef typename FieldType::value_type value_type;
+                typedef typename value_type::data_type data_type;
                 const size_t bits = FieldType::modulus_bits;
 
+                paillier_public_key() {
+
+                }
+        
                 paillier_public_key(const value_type& n, const value_type& g) :
                     n(n),
                     g(g) {
 
                 }
 
-                //value_type encrypt(value_type& message) {
-                //    Generator generator(time(0));
-                //    boost::random::uniform_int_distribution<cpp_int> distribution(1, n.data.convert_to<cpp_int>());
-                //    cpp_int r = distribution(generator);
-                //    cpp_int first_part = pow(g.data.convert_to<cpp_int>(), message.data.convert_to<cpp_int>()) *
-                //        pow(r, n.data.convert_to<cpp_int>());
-                //    cpp_int second_part = pow(n.data.convert_to<cpp_int>(), cpp_int(2));
-                //    value_type encrypt_message = value_type(cpp_int(cpp_mod(first_part, second_part)));
-                //    return encrypt_message;
-                //}
+                paillier_public_key(const paillier_public_key<FieldType, Generator>& key) {
+                    n = key.n;
+                    g = key.g;
+                }
+                
+                paillier_public_key& operator=(const paillier_public_key<FieldType, Generator>& key) {
+                    n = key.n;
+                    g = key.g;
+                    return *this;
+                }
+
+                paillier_public_key(paillier_public_key<FieldType, Generator>&& key) {
+                    n = std::move(key.n);
+                    g = std::move(key.g);
+                }
+
+                paillier_public_key& operator=(paillier_public_key<FieldType, Generator>&& key) {
+                    n = std::move(key.n);
+                    g = std::move(key.g);
+                    return *this;
+                }
+
+                value_type encrypt(value_type& message) {
+                    Generator generator(time(0));
+                    boost::random::uniform_int_distribution<cpp_int> distribution(1, n.data.template convert_to<cpp_int>());
+                    cpp_int r = distribution(generator);
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    cpp_int first_part = op.pow(g.data.template convert_to<cpp_int>(), message.data.template convert_to<cpp_int>()) *
+                        op.pow(r, n.data.template convert_to<cpp_int>());
+                    cpp_int second_part = op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2));
+                    value_type encrypt_message = value_type(cpp_int(cpp_mod(first_part, second_part)));
+                    return encrypt_message;
+                }
+
+                bool verify() {
+                    pair<cpp_int, cpp_int> signs = make_pair(cpp_int(1), cpp_int(1));
+                    cpp_int value = cpp_int(cpp_mod(pow(g.data.convert_to<cpp_int>(), signs.first) * pow(signs.second, n.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2))));               
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+
+                    std::string message = "42";
+                    nil::crypto3::hashes::md5::digest_type d = nil::crypto3::hash<hashes::md5>(message);
+                    string d_str = to_string(d);
+                    cpp_int hash_function_result = op.hex_to_dec(d_str);
+
+                    if (hash_function_result == value)
+                        return true;
+                    else
+                        return false;
+                }
             private:
                 value_type n;
                 value_type g;
@@ -87,8 +131,39 @@ namespace nil {
             template<typename FieldType, typename Generator>
             struct paillier_private_key {
                 typedef typename FieldType::value_type value_type;
+                typedef typename value_type::data_type data_type;
                 const size_t bits = FieldType::modulus_bits;
 
+                paillier_private_key() {
+
+                }
+
+                paillier_private_key(const paillier_private_key<FieldType, Generator>& key) {
+                    lambda = key.lambda;
+                    mu = key.mu;
+                    n = key.n;
+                }
+
+                paillier_private_key& operator=(const paillier_private_key<FieldType, Generator>& key) {
+                    lambda = key.lambda;
+                    mu = key.mu;
+                    n = key.n;
+                    return *this;
+                }
+
+                paillier_private_key(paillier_private_key<FieldType, Generator>&& key) {
+                    lambda = std::move(key.lambda);
+                    mu = std::move(key.mu);
+                    n = std::move(key.n);
+                }
+
+                paillier_private_key& operator=(paillier_private_key<FieldType, Generator>&& key) {
+                    lambda = std::move(key.lambda);
+                    mu = std::move(key.mu);
+                    n = std::move(key.n);
+                    return *this;
+                }
+                                
                 paillier_private_key(const value_type& lambda, const value_type& mu, const value_type& n) : 
                     lambda(lambda),
                     mu(mu),
@@ -96,15 +171,34 @@ namespace nil {
 
                 }
 
-                //value_type decrypt(value_type& message) {
-                //    if (message > n.pow(2)) {
-                //        return value_type(0);
-                //    }
-                //    cpp_int u(cpp_mod(pow(message.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2))));
-                //    cpp_int l_u = (u - 1) / n.data.convert_to<cpp_int>();
-                //    value_type decrypt_message = value_type(cpp_int(cpp_mod(l_u * mu.data.convert_to<cpp_int>(), n.data.convert_to<cpp_int>())));
-                //    return decrypt_message;
-                //}
+                value_type decrypt(value_type& message) {
+                    if (message > n.pow(2)) {
+                        return value_type(0);
+                    }
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    cpp_int u(cpp_mod(op.pow(message.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2))));
+                    cpp_int l_u = (u - 1) / n.data.template convert_to<cpp_int>();
+                    value_type decrypt_message = value_type(cpp_int(cpp_mod(l_u * mu.data.template convert_to<cpp_int>(), n.data.template convert_to<cpp_int>())));
+                    return decrypt_message;
+                }
+
+                pair<cpp_int, cpp_int> sign() {
+                    std::string message = "42";
+                    nil::crypto3::hashes::md5::digest_type d = nil::crypto3::hash<hashes::md5>(message);
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    string d_str = to_string(d);
+                    cpp_int hash_function_result = op.hex_to_dec(d_str);
+
+                    cpp_int numerator = (cpp_int(cpp_mod(pow(hash_function_result, lambda.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.convert_to<cpp_int>();
+                    cpp_int denominator = (cpp_int(cpp_mod(pow(g.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.convert_to<cpp_int>();
+                    cpp_int s1 = cpp_int(cpp_mod(mod_inverse(second_part_s1, n.data.convert_to<cpp_int>()) * numerator, n.data.convert_to<cpp_int>()));
+
+                    cpp_int inverse_n = mod_inverse(n.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>());
+                    cpp_int inverse_g = mod_inverse(pow(g.data.convert_to<cpp_int>(), s1), n.data.convert_to<cpp_int>());
+                    cpp_int s2 = cpp_int(cpp_mod(pow(hash_function_result * inverse_g, inverse_n), n.data.convert_to<cpp_int>()));
+
+                    return make_pair(s1, s2);
+                }
             private:
                 value_type lambda;
                 value_type mu;
@@ -114,31 +208,30 @@ namespace nil {
             template<typename FieldType, typename Generator>
             struct paillier {
                 typedef typename FieldType::value_type value_type;
+                typedef typename FieldType::value_type::data_type data_type;
                 const size_t bits = FieldType::modulus_bits;
 
-                typedef paillier_public_key<FieldType, Generator> public_key_type;
-                typedef paillier_private_key<FieldType, Generator> private_key_type;
+                paillier_public_key<FieldType, Generator> public_key;
+                paillier_private_key<FieldType, Generator> private_key;
 
-                /*paillier_public_key_type public_key;
-                paillier_private_key_type private_key;*/
-
-                paillier() {
-                    primes_generator<FieldType, boost::random::mt19937> generator;
-                    primes = generator.generate_primes(20);
-                    //n = generate_n();
-                    //lambda = generate_lambda();
-                    //g = generate_g();
-                    //mu = generate_mu();
-                    //public_key(n, g);
-                    //private_key(lambda, mu, n);
+                paillier(const int iterations_number = 20) {
+                    primes_generator<FieldType, Generator> generator;
+                    primes = generator.generate_primes(iterations_number);
+                    n = generate_n();
+                    lambda = generate_lambda();
+                    g = generate_g();
+                    mu = generate_mu();
+                    public_key = paillier_public_key<FieldType, Generator>(n, g);
+                    private_key = paillier_private_key<FieldType, Generator>(lambda, mu, n);
                 }
                 paillier(value_type& first_prime, value_type& second_prime) {
                     primes = make_pair(first_prime, second_prime);
-                    //n = generate_n();
-                    //lambda = generate_lambda();
-                    //g = generate_g();
-                    //mu = generate_mu();
-                    //private_key(lambda, mu, n);
+                    n = generate_n();
+                    lambda = generate_lambda();
+                    g = generate_g();
+                    mu = generate_mu();
+                    public_key = paillier_public_key<FieldType, Generator>(n, g);
+                    private_key = paillier_private_key<FieldType, Generator>(lambda, mu, n);
                 }
 
             private:
@@ -149,33 +242,36 @@ namespace nil {
                 value_type mu;
 
 
-                //value_type generate_n() {
-                //    return primes.first * primes.second;
-                //}
+                value_type generate_n() {
+                    return primes.first * primes.second;
+                }
 
-                //value_type generate_lambda() {
-                //    return nil::crypto3::pubkey::lcm<FieldType>((primes.first - value_type(1)), (primes.second - value_type(1)));
-                //}
+                value_type generate_lambda() {
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    return op.lcm((primes.first - value_type(1)), (primes.second - value_type(1)));
+                }
 
-                //value_type generate_g() {
-                //    Generator generator(time(0));
-                //    boost::random::uniform_int_distribution<cpp_int> distribution(cpp_int(1), n.pow(2).data.convert_to<cpp_int>());
-                //    cpp_int value = distribution(generator);
-                //    while (cpp_int(cpp_mod(pow(g.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>()), n.data.convert_to<cpp_int>())) != cpp_int(1)) {
-                //        value = distribution(generator);
-                //    }
-                //    value_type g(value);
-                //    return g;
-                //}
+                value_type generate_g() {
+                    Generator generator(time(0));
+                    boost::random::uniform_int_distribution<cpp_int> distribution(cpp_int(1), n.pow(2).data.template convert_to<cpp_int>());
+                    cpp_int value = distribution(generator);
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    while (cpp_int(cpp_mod(op.pow(g.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>()), n.data.template convert_to<cpp_int>())) != cpp_int(1)) {
+                        value = distribution(generator);
+                    }
+                    value_type g(value);
+                    return g;
+                }
 
-                //value_type generate_mu() {
-                //    cpp_int first_part = pow(g.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>());
-                //    cpp_int second_part = pow(n.data.convert_to<cpp_int>(), cpp_int(2));
-                //    cpp_int u = cpp_int(cpp_mod(first_part, second_part));
-                //    cpp_int l_u = (u - 1) / n.data.convert_to<cpp_int>();
-                //    value_type mu(mod_inverse(l_u, n.data.convert_to<cpp_int>()));
-                //    return mu;
-                //}
+                value_type generate_mu() {
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    cpp_int first_part = op.pow(g.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>());
+                    cpp_int second_part = op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2));
+                    cpp_int u = cpp_int(cpp_mod(first_part, second_part));
+                    cpp_int l_u = (u - 1) / n.data.template convert_to<cpp_int>();
+                    value_type mu(mod_inverse(l_u, n.data.template convert_to<cpp_int>()));
+                    return mu;
+                }
 
             };
         }    // namespace pubkey

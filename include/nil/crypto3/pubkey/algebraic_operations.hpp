@@ -31,6 +31,7 @@
 #include <random>
 #include <iostream>
 #include <typeinfo>
+#include <string>
 #include <nil/crypto3/multiprecision/random.hpp>
 #include <nil/crypto3/algebra/random_element.hpp>
 #include <nil/crypto3/algebra/fields/alt_bn128/base_field.hpp>
@@ -85,6 +86,38 @@ namespace nil {
                             return value * pow(value, exponent - 1);
                         }
                     }
+                }
+
+                cpp_int hex_to_dec(std::string& hex_value) {
+                    cpp_int dec_result(0);
+                    cpp_int index(1);
+                    for (int i = hex_value.size() - 1; i > -1; i--) {
+                        switch (hex_value[i]) {
+                        case ('a'):
+                            dec_result = dec_result + index * cpp_int(10);
+                            break;
+                        case ('b'):
+                            dec_result = dec_result + index * cpp_int(11);
+                            break;
+                        case ('c'):
+                            dec_result = dec_result + index * cpp_int(12);
+                            break;
+                        case ('d'):
+                            dec_result = dec_result + index * cpp_int(13);
+                            break;
+                        case ('e'):
+                            dec_result = dec_result + index * cpp_int(14);
+                            break;
+                        case ('f'):
+                            dec_result = dec_result + index * cpp_int(15);
+                            break;
+                        default:
+                            dec_result = dec_result + index * cpp_int(static_cast<int>(hex_value[i] - 48));
+                            break;
+                        }
+                        index *= cpp_int(16);
+                    }
+                    return dec_result;
                 }
             };
         }    // namespace pubkey
