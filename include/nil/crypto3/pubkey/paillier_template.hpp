@@ -40,11 +40,10 @@
 
 #include <nil/crypto3/multiprecision/random.hpp>
 #include <nil/crypto3/algebra/random_element.hpp>
-#include <nil/crypto3/algebra/fields/alt_bn128/base_field.hpp>
-#include <nil/crypto3/algebra/fields/alt_bn128/scalar_field.hpp>
 #include <nil/crypto3/multiprecision/cpp_modular.hpp>
 #include <nil/crypto3/multiprecision/miller_rabin.hpp>
 #include <nil/crypto3/multiprecision/cpp_dec_float.hpp>
+#include <nil/crypto3/hash/algorithm/hash.hpp>
 
 using namespace std;
 using namespace nil::crypto3::multiprecision;
@@ -58,10 +57,11 @@ namespace nil {
     namespace crypto3 {
         namespace pubkey {
 
-            template<typename FieldType, typename Generator>
+            template<typename FieldType, typename Generator, typename Hash>
             struct paillier_public_key {
                 typedef typename FieldType::value_type value_type;
                 typedef typename value_type::data_type data_type;
+                typedef typename Hash::digest_type digest_type;
                 const size_t bits = FieldType::modulus_bits;
 
                 paillier_public_key() {
@@ -71,52 +71,52 @@ namespace nil {
                 paillier_public_key(const value_type& n, const value_type& g) :
                     n(n),
                     g(g) {
-
                 }
 
-                paillier_public_key(const paillier_public_key<FieldType, Generator>& key) {
+                paillier_public_key(const paillier_public_key<FieldType, Generator, Hash>& key) {
                     n = key.n;
                     g = key.g;
                 }
                 
-                paillier_public_key& operator=(const paillier_public_key<FieldType, Generator>& key) {
+                paillier_public_key& operator=(const paillier_public_key<FieldType, Generator, Hash>& key) {
                     n = key.n;
                     g = key.g;
                     return *this;
                 }
 
-                paillier_public_key(paillier_public_key<FieldType, Generator>&& key) {
+                paillier_public_key(paillier_public_key<FieldType, Generator, Hash>&& key) {
                     n = std::move(key.n);
                     g = std::move(key.g);
                 }
 
-                paillier_public_key& operator=(paillier_public_key<FieldType, Generator>&& key) {
+                paillier_public_key& operator=(paillier_public_key<FieldType, Generator, Hash>&& key) {
                     n = std::move(key.n);
                     g = std::move(key.g);
                     return *this;
                 }
 
                 value_type encrypt(value_type& message) {
+                    if (message > n) {
+                        return value_type(0);
+                    }
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
                     Generator generator(time(0));
                     boost::random::uniform_int_distribution<cpp_int> distribution(1, n.data.template convert_to<cpp_int>());
                     cpp_int r = distribution(generator);
-                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
                     cpp_int first_part = op.pow(g.data.template convert_to<cpp_int>(), message.data.template convert_to<cpp_int>()) *
                         op.pow(r, n.data.template convert_to<cpp_int>());
                     cpp_int second_part = op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2));
                     value_type encrypt_message = value_type(cpp_int(cpp_mod(first_part, second_part)));
                     return encrypt_message;
-                }
+                  }
 
-                bool verify() {
-                    pair<cpp_int, cpp_int> signs = make_pair(cpp_int(1), cpp_int(1));
-                    cpp_int value = cpp_int(cpp_mod(pow(g.data.convert_to<cpp_int>(), signs.first) * pow(signs.second, n.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2))));               
+                bool verify(cpp_int& s1, cpp_int& s2, value_type& message) {
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    cpp_int value = cpp_int(cpp_mod(op.pow(g.data.template convert_to<cpp_int>(), s1) * op.pow(s2, n.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2))));               
 
-                    std::string message = "42";
-                    nil::crypto3::hashes::md5::digest_type d = nil::crypto3::hash<hashes::md5>(message);
-                    string d_str = to_string(d);
-                    cpp_int hash_function_result = op.hex_to_dec(d_str);
+                    digest_type hashed_message = nil::crypto3::hash<Hash>(message.data.template convert_to<cpp_int>().str());
+                    string string_hashed_message = to_string(hashed_message);
+                    cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
 
                     if (hash_function_result == value)
                         return true;
@@ -128,74 +128,79 @@ namespace nil {
                 value_type g;
             };
 
-            template<typename FieldType, typename Generator>
+            template<typename FieldType, typename Generator, typename Hash>
             struct paillier_private_key {
                 typedef typename FieldType::value_type value_type;
                 typedef typename value_type::data_type data_type;
+                typedef typename Hash::digest_type digest_type;
                 const size_t bits = FieldType::modulus_bits;
+
 
                 paillier_private_key() {
 
                 }
 
-                paillier_private_key(const paillier_private_key<FieldType, Generator>& key) {
+                paillier_private_key(const paillier_private_key<FieldType, Generator, Hash>& key) {
                     lambda = key.lambda;
                     mu = key.mu;
                     n = key.n;
+                    g = key.g;
                 }
 
-                paillier_private_key& operator=(const paillier_private_key<FieldType, Generator>& key) {
+                paillier_private_key& operator=(const paillier_private_key<FieldType, Generator, Hash>& key) {
                     lambda = key.lambda;
                     mu = key.mu;
                     n = key.n;
+                    g = key.g;
                     return *this;
                 }
 
-                paillier_private_key(paillier_private_key<FieldType, Generator>&& key) {
+                paillier_private_key(paillier_private_key<FieldType, Generator, Hash>&& key) {
                     lambda = std::move(key.lambda);
                     mu = std::move(key.mu);
                     n = std::move(key.n);
+                    g = std::move(key.g);
                 }
 
-                paillier_private_key& operator=(paillier_private_key<FieldType, Generator>&& key) {
+                paillier_private_key& operator=(paillier_private_key<FieldType, Generator, Hash>&& key) {
                     lambda = std::move(key.lambda);
                     mu = std::move(key.mu);
                     n = std::move(key.n);
+                    g = std::move(key.g);
                     return *this;
                 }
                                 
-                paillier_private_key(const value_type& lambda, const value_type& mu, const value_type& n) : 
+                paillier_private_key(const value_type& lambda, const value_type& mu, const value_type& n, const value_type& g) :
                     lambda(lambda),
                     mu(mu),
-                    n(n) {
-
+                    n(n),
+                    g(g) {
                 }
 
                 value_type decrypt(value_type& message) {
-                    if (message > n.pow(2)) {
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    if (message.data.template convert_to<cpp_int>() > op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2))) {
                         return value_type(0);
                     }
-                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
                     cpp_int u(cpp_mod(op.pow(message.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2))));
                     cpp_int l_u = (u - 1) / n.data.template convert_to<cpp_int>();
                     value_type decrypt_message = value_type(cpp_int(cpp_mod(l_u * mu.data.template convert_to<cpp_int>(), n.data.template convert_to<cpp_int>())));
                     return decrypt_message;
                 }
 
-                pair<cpp_int, cpp_int> sign() {
-                    std::string message = "42";
-                    nil::crypto3::hashes::md5::digest_type d = nil::crypto3::hash<hashes::md5>(message);
+                pair<cpp_int, cpp_int> sign(value_type& message) {
+                    digest_type hashed_message = nil::crypto3::hash<Hash>(message.data.template convert_to<cpp_int>().str());
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
-                    string d_str = to_string(d);
-                    cpp_int hash_function_result = op.hex_to_dec(d_str);
+                    string string_hashed_message = to_string(hashed_message);
+                    cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
 
-                    cpp_int numerator = (cpp_int(cpp_mod(pow(hash_function_result, lambda.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.convert_to<cpp_int>();
-                    cpp_int denominator = (cpp_int(cpp_mod(pow(g.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>()), pow(n.data.convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.convert_to<cpp_int>();
-                    cpp_int s1 = cpp_int(cpp_mod(mod_inverse(second_part_s1, n.data.convert_to<cpp_int>()) * numerator, n.data.convert_to<cpp_int>()));
+                    cpp_int numerator = (cpp_int(cpp_mod(op.pow(hash_function_result, lambda.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.template convert_to<cpp_int>();
+                    cpp_int denominator = (cpp_int(cpp_mod(op.pow(g.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.template convert_to<cpp_int>();
+                    cpp_int s1 = cpp_int(cpp_mod(mod_inverse(denominator, n.data.template convert_to<cpp_int>()) * numerator, n.data.template convert_to<cpp_int>()));
 
-                    cpp_int inverse_n = mod_inverse(n.data.convert_to<cpp_int>(), lambda.data.convert_to<cpp_int>());
-                    cpp_int inverse_g = mod_inverse(pow(g.data.convert_to<cpp_int>(), s1), n.data.convert_to<cpp_int>());
-                    cpp_int s2 = cpp_int(cpp_mod(pow(hash_function_result * inverse_g, inverse_n), n.data.convert_to<cpp_int>()));
+                    cpp_int inverse_n = mod_inverse(n.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>());
+                    cpp_int inverse_g = mod_inverse(op.pow(g.data.template convert_to<cpp_int>(), s1), n.data.template convert_to<cpp_int>());
+                    cpp_int s2 = cpp_int(cpp_mod(op.pow(hash_function_result * inverse_g, inverse_n), n.data.template convert_to<cpp_int>()));
 
                     return make_pair(s1, s2);
                 }
@@ -203,16 +208,18 @@ namespace nil {
                 value_type lambda;
                 value_type mu;
                 value_type n;
+                value_type g;
             };
 
-            template<typename FieldType, typename Generator>
+            template<typename FieldType, typename Generator, typename Hash>
             struct paillier {
                 typedef typename FieldType::value_type value_type;
                 typedef typename FieldType::value_type::data_type data_type;
+                typedef typename Hash::digest_type digest_type;
                 const size_t bits = FieldType::modulus_bits;
 
-                paillier_public_key<FieldType, Generator> public_key;
-                paillier_private_key<FieldType, Generator> private_key;
+                paillier_public_key<FieldType, Generator, Hash> public_key;
+                paillier_private_key<FieldType, Generator, Hash> private_key;
 
                 paillier(const int iterations_number = 20) {
                     primes_generator<FieldType, Generator> generator;
@@ -221,8 +228,8 @@ namespace nil {
                     lambda = generate_lambda();
                     g = generate_g();
                     mu = generate_mu();
-                    public_key = paillier_public_key<FieldType, Generator>(n, g);
-                    private_key = paillier_private_key<FieldType, Generator>(lambda, mu, n);
+                    public_key = paillier_public_key<FieldType, Generator, Hash>(n, g);
+                    private_key = paillier_private_key<FieldType, Generator, Hash>(lambda, mu, n, g);
                 }
                 paillier(value_type& first_prime, value_type& second_prime) {
                     primes = make_pair(first_prime, second_prime);
@@ -230,8 +237,8 @@ namespace nil {
                     lambda = generate_lambda();
                     g = generate_g();
                     mu = generate_mu();
-                    public_key = paillier_public_key<FieldType, Generator>(n, g);
-                    private_key = paillier_private_key<FieldType, Generator>(lambda, mu, n);
+                    public_key = paillier_public_key<FieldType, Generator, Hash>(n, g);
+                    private_key = paillier_private_key<FieldType, Generator, Hash>(lambda, mu, n);
                 }
 
             private:
@@ -248,7 +255,10 @@ namespace nil {
 
                 value_type generate_lambda() {
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
-                    return op.lcm((primes.first - value_type(1)), (primes.second - value_type(1)));
+                    cpp_int first = primes.first.data.template convert_to<cpp_int>() - cpp_int(1);
+                    cpp_int second = primes.second.data.template convert_to<cpp_int>() - cpp_int(1);
+                    cpp_int lcm_result = op.lcm(first, second);
+                    return value_type(lcm_result);
                 }
 
                 value_type generate_g() {
@@ -256,7 +266,7 @@ namespace nil {
                     boost::random::uniform_int_distribution<cpp_int> distribution(cpp_int(1), n.pow(2).data.template convert_to<cpp_int>());
                     cpp_int value = distribution(generator);
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
-                    while (cpp_int(cpp_mod(op.pow(g.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>()), n.data.template convert_to<cpp_int>())) != cpp_int(1)) {
+                    while (cpp_int(cpp_mod(op.pow(value, lambda.data.template convert_to<cpp_int>()), n.data.template convert_to<cpp_int>())) != cpp_int(1)) {
                         value = distribution(generator);
                     }
                     value_type g(value);

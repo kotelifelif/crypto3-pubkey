@@ -60,47 +60,45 @@ namespace nil {
 
                 //// https://habr.com/ru/post/594135/
                 //// https://progler.ru/blog/kak-generirovat-bolshie-prostye-chisla-dlya-algoritma-rsa
-                value_type get_low_level_prime(value_type& min_value, value_type& max_value) {
+                cpp_int get_low_level_prime(cpp_int& min_value, cpp_int& max_value) {
                     Generator generator(time(0));
-                    boost::random::uniform_int_distribution<cpp_int> distribution(min_value.data.template convert_to<cpp_int>(), max_value.data.template convert_to<cpp_int>());
+                    boost::random::uniform_int_distribution<cpp_int> distribution(min_value, max_value);
                     cpp_int value(0);
                     while (true) {
                         value = distribution(generator);
                         for (size_t prime : primes_numbers) {
-                            if (value_type(cpp_int(cpp_mod(value, cpp_int(prime)))) == value_type(0)) {
+                            if (cpp_int(cpp_mod(value, cpp_int(prime))) == cpp_int(0)) {
                                 break;
                             }
                         }
-                        return value_type(value);
+                        return value;
                     }
                 }
 
-                value_type get_miller_rabin_test_prime(value_type min_value, value_type max_value, const size_t iterations_number) {
-                    value_type low_level_prime(0);
-                    cpp_int cpp_int_low_level_prime;
+                cpp_int get_miller_rabin_test_prime(cpp_int min_value, cpp_int max_value, const size_t iterations_number) {
+                    cpp_int low_level_prime(0);
                     while (true) {
                         low_level_prime = get_low_level_prime(min_value, max_value);
-                        cpp_int_low_level_prime = low_level_prime.data.template convert_to<cpp_int>();
-                        if (miller_rabin_test(cpp_int_low_level_prime, iterations_number)) {
+                        if (miller_rabin_test(low_level_prime, iterations_number)) {
                             return low_level_prime;
                         }
                     }
                 }
 
-                pair<value_type, value_type> generate_primes(const size_t iterations_number) {
-                    pair<value_type, value_type> primes = make_pair(value_type(7), value_type(11));
+                pair<cpp_int, cpp_int> generate_primes(const size_t iterations_number) {
+                    pair<cpp_int, cpp_int> primes = make_pair(cpp_int(0), cpp_int(0));
 
                     size_t value_bits_size(bits);
-                    value_type min_value = value_type(2).pow(value_bits_size - 1);
-                    value_type max_value = value_type(2).pow(value_bits_size) - value_type(1);
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    cpp_int min_value = op.pow(cpp_int(2), cpp_int(value_bits_size - 1));
+                    cpp_int max_value = op.pow(cpp_int(2), cpp_int(value_bits_size)) - cpp_int(1);
 
-                    value_type p = get_miller_rabin_test_prime(min_value, max_value, iterations_number);
-                    value_type q = p;
+                    cpp_int p = get_miller_rabin_test_prime(min_value, max_value, iterations_number);
+                    cpp_int q = p;
 
-                    algebraic_operations<FieldType> operations;
                     while (true) {
                         q = get_miller_rabin_test_prime(min_value, max_value, iterations_number);
-                        if ((operations.gcd(p * q, (p - 1) * (q - 1)) == value_type(1)) && (p != q)) {
+                        if ((op.gcd(p * q, (p - 1) * (q - 1)) == cpp_int(1)) && (p != q)) {
                             break;
                         }
                     }

@@ -56,20 +56,20 @@ namespace nil {
                 typedef typename FieldType::value_type value_type;
                 typedef typename FieldType::value_type::data_type data_type;
                 
-                value_type gcd(value_type a, value_type b) {
+                cpp_int gcd(cpp_int a, cpp_int b) {
                     while (true) {
-                        if (a == value_type(0)) {
+                        if (a == cpp_int(0)) {
                             return b;
                         }
-                        b = value_type(cpp_int(cpp_mod(b.data.template convert_to<cpp_int>(), a.data.template convert_to<cpp_int>())));
-                        if (b == value_type(0)) {
+                        b = cpp_int(cpp_mod(b, a));
+                        if (b == cpp_int(0)) {
                             return a;
                         }
-                        a = value_type(cpp_int(cpp_mod(a.data.template convert_to<cpp_int>(), b.data.template convert_to<cpp_int>())));
+                        a = cpp_int(cpp_mod(a, b));
                     }
                 }
 
-                value_type lcm(value_type a, value_type b) {
+                cpp_int lcm(cpp_int a, cpp_int b) {
                     return (a / gcd(a, b)) * b;
                 }
 
