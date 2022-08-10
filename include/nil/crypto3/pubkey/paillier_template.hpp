@@ -1,4 +1,4 @@
-//////---------------------------------------------------------------------------//
+﻿//////---------------------------------------------------------------------------//
 ////// Copyright (c) 2018-2021 Mikhail Komarov <nemo@nil.foundation>
 ////// Copyright (c) 2020-2021 Ilias Khairullin <ilias@nil.foundation>
 //////
@@ -64,7 +64,7 @@ namespace nil {
                 typedef typename FieldType::value_type value_type;
                 typedef typename value_type::data_type data_type;
                 typedef typename Hash::digest_type digest_type;
-                const size_t bits = 5; // FieldType::modulus_bits;
+                const size_t bits = FieldType::modulus_bits;
 
                 paillier_public_key() {
                     mpz_init(n);
@@ -113,35 +113,24 @@ namespace nil {
                     return *this;
                 }
 
-                value_type encrypt(value_type& message) {
+                cpp_int encrypt(value_type& message) {
                     mpz_t mpz_t_message;
                     mpz_init_set_str(mpz_t_message, message.data.template convert_to<cpp_int>().str().c_str(), 10);
                     if (mpz_cmp(mpz_t_message, this->n) > 0) {
                         mpz_clear(mpz_t_message);
-                        return value_type(0);
+                        return cpp_int(0);
                     }
                     
-                    mpz_t n;
-                    mpz_init(n);
-                    mpz_set_ui(n, 77);
                     mpz_t n_pow_2;
                     mpz_init(n_pow_2);
-                    mpz_set_ui(n_pow_2, 5929);
-                    mpz_t g;
-                    mpz_init(g);
-                    mpz_set_ui(g, 5652);
+                    mpz_mul(n_pow_2, n, n);
                     mpz_t r;
                     mpz_init(r);
-                    mpz_set_ui(r, 23);
-                    //mpz_init(n_pow_2);
-                    //mpz_mul(n_pow_2, n, n);
-                    //mpz_t r;
-                    //mpz_init(r);
-                    //gmp_randstate_t rstate;
-                    //gmp_randinit_mt(rstate);
-                    //mpz_urandomm(r, rstate, n);
-                    //mpz_add_ui(r, r, 1);
-                    gmp_printf("r %Zi \n", &r);
+                    gmp_randstate_t rstate;
+                    gmp_randinit_mt(rstate);
+                    gmp_randseed_ui(rstate, time(0));
+                    mpz_urandomm(r, rstate, n);
+                    mpz_add_ui(r, r, 1);
 
                     mpz_t encrypt;
                     mpz_t first_part;
@@ -150,46 +139,68 @@ namespace nil {
                     mpz_init(first_part);
                     mpz_init(second_part);
                     mpz_powm(first_part, g, mpz_t_message, n_pow_2);
-                    gmp_printf("first_part %Zi \n", &first_part);
                     mpz_powm(second_part, r, n, n_pow_2);
-                    gmp_printf("second_part %Zi \n", &second_part);
                     mpz_mul(encrypt, first_part, second_part);
                     mpz_mod(encrypt, encrypt, n_pow_2);
-                    gmp_printf("encrypt %Zi \n", &encrypt);
 
-                    char* tmp = mpz_get_str(NULL, 10, mpz_t_message);
-                    std::string str_encrypt = tmp;
-
-                    void (*freefunc)(void*, size_t);
-                    mp_get_memory_functions(NULL, NULL, &freefunc);
-                    freefunc(tmp, strlen(tmp) + 1);
-
-                    mpz_int v = &encrypt;
-                    value_type encrypt_message = value_type(cpp_int(v.backend().data()));
+                    mpz_int v = encrypt;
+                    //value_type encrypt_message = value_type(v.convert_to<cpp_int>());
                     
-                    /*gmp_randclear(rstate)*/;
+                    gmp_randclear(rstate);
                     mpz_clear(first_part);
                     mpz_clear(second_part);
                     mpz_clear(encrypt);
                     mpz_clear(n_pow_2);
                     mpz_clear(mpz_t_message);
 
-                    return encrypt_message;
+                    return v.convert_to<cpp_int>();
                   }
 
-                //bool verify(cpp_int& s1, cpp_int& s2, value_type& message) {
-                //    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
-                //    cpp_int value = cpp_int(cpp_mod(op.pow(g.data.template convert_to<cpp_int>(), s1) * op.pow(s2, n.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2))));               
+                bool verify(cpp_int& s1, cpp_int& s2, cpp_int& message) {
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    mpz_t n_pow_2;
+                    mpz_init(n_pow_2);
+                    mpz_mul(n_pow_2, n, n);
+                    mpz_t first_part;
+                    mpz_init(first_part);
+                    mpz_t mpz_s1;
+                    mpz_init(mpz_s1);
+                    mpz_set_str(mpz_s1, s1.str().c_str(), 10);
+                    mpz_powm(first_part, g, mpz_s1, n_pow_2);
+                    mpz_t mpz_s2;
+                    mpz_init(mpz_s2);
+                    mpz_set_str(mpz_s2, s2.str().c_str(), 10);
+                    mpz_t second_part;
+                    mpz_init(second_part);
+                    mpz_set_str(mpz_s2, s2.str().c_str(), 10);
+                    mpz_powm(second_part, mpz_s2, n, n_pow_2);
+                    mpz_t mpz_value;
+                    mpz_init(mpz_value);
+                    mpz_mul(mpz_value, first_part, second_part);
+                    mpz_mod(mpz_value, mpz_value, n_pow_2);                
 
-                //    digest_type hashed_message = nil::crypto3::hash<Hash>(message.data.template convert_to<cpp_int>().str());
-                //    string string_hashed_message = to_string(hashed_message);
-                //    cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
+                    mpz_int mpz_int_value = mpz_value;
+                    cpp_int value = mpz_int_value.convert_to<cpp_int>();
+                    
+                    digest_type hashed_message = nil::crypto3::hash<Hash>(message.str());
+                    string string_hashed_message = to_string(hashed_message);
+                    cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
 
-                //    if (hash_function_result == value)
-                //        return true;
-                //    else
-                //        return false;
-                //}
+                    bool result;
+                    if (hash_function_result == value)
+                        result = true;
+                    else
+                        result = false;
+
+                    mpz_clear(n_pow_2);
+                    mpz_clear(first_part);
+                    mpz_clear(second_part);
+                    mpz_clear(mpz_s2);
+                    mpz_clear(mpz_s1);
+                    mpz_clear(mpz_value);
+                    
+                    return result;
+                }
             private:
                 mpz_t n;
                 mpz_t g;
@@ -200,7 +211,7 @@ namespace nil {
                 typedef typename FieldType::value_type value_type;
                 typedef typename value_type::data_type data_type;
                 typedef typename Hash::digest_type digest_type;
-                const size_t bits = 5; // FieldType::modulus_bits;
+                const size_t bits = FieldType::modulus_bits;
 
 
                 paillier_private_key() {
@@ -274,17 +285,18 @@ namespace nil {
                     mpz_set(this->g, g);
                 }
 
-                value_type decrypt(value_type& message) {
+                cpp_int decrypt(cpp_int& message) {
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
                     mpz_t n_pow_2;
                     mpz_init(n_pow_2);
                     mpz_mul(n_pow_2, n, n);
                     mpz_t mpz_t_message;
-                    mpz_init_set_str(mpz_t_message, message.data.template convert_to<cpp_int>().str().c_str(), 10);
+                    mpz_init_set_str(mpz_t_message, message.str().c_str(), 10);
+
                     if (mpz_cmp(mpz_t_message, n_pow_2) > 0) {
                         mpz_clear(mpz_t_message);
                         mpz_clear(n_pow_2);
-                        return value_type(0);
+                        return cpp_int(0);
                     }
 
                     mpz_powm(mpz_t_message, mpz_t_message, lambda, n_pow_2);
@@ -293,35 +305,65 @@ namespace nil {
                     mpz_mul(mpz_t_message, mpz_t_message, mu);
                     mpz_mod(mpz_t_message, mpz_t_message, n);
 
-                    char* tmp = mpz_get_str(NULL, 10, mpz_t_message);
-                    std::string str_decrypt = tmp;
+                
+                    mpz_int v = mpz_t_message;
 
-                    void (*freefunc)(void*, size_t);
-                    mp_get_memory_functions(NULL, NULL, &freefunc);
-                    freefunc(tmp, strlen(tmp) + 1);
-                    
-                    value_type decrypt_message = value_type(cpp_int(str_decrypt));
+                    //value_type decrypt_message = value_type(v.convert_to<cpp_int>());
                     mpz_clear(mpz_t_message);
                     mpz_clear(n_pow_2);
-                    return decrypt_message;
+                    return v.convert_to<cpp_int>();
                 }
 
-                //pair<cpp_int, cpp_int> sign(value_type& message) {
-                //    digest_type hashed_message = nil::crypto3::hash<Hash>(message.data.template convert_to<cpp_int>().str());
-                //    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
-                //    string string_hashed_message = to_string(hashed_message);
-                //    cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
+                pair<cpp_int, cpp_int> sign(value_type& message) {
+                    digest_type hashed_message = nil::crypto3::hash<Hash>(message.data.template convert_to<cpp_int>().str());
+                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
+                    string string_hashed_message = to_string(hashed_message);
+                    cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
+                    mpz_t hash_result;
+                    mpz_init(hash_result);
+                    mpz_set_str(hash_result, hash_function_result.str().c_str(), 10);
 
-                //    cpp_int numerator = (cpp_int(cpp_mod(op.pow(hash_function_result, lambda.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.template convert_to<cpp_int>();
-                //    cpp_int denominator = (cpp_int(cpp_mod(op.pow(g.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>()), op.pow(n.data.template convert_to<cpp_int>(), cpp_int(2)))) - cpp_int(1)) / n.data.template convert_to<cpp_int>();
-                //    cpp_int s1 = cpp_int(cpp_mod(mod_inverse(denominator, n.data.template convert_to<cpp_int>()) * numerator, n.data.template convert_to<cpp_int>()));
+                    mpz_t n_pow_2;
+                    mpz_init(n_pow_2);
+                    mpz_mul(n_pow_2, n, n);
+                    mpz_t numerator;
+                    mpz_init(numerator);
+                    mpz_set(numerator, hash_result);
+                    mpz_powm(numerator, numerator, lambda, n_pow_2);
+                    mpz_sub_ui(numerator, numerator, 1);
+                    mpz_div(numerator, numerator, n);
+                    mpz_t denominator;
+                    mpz_init(denominator);
+                    mpz_powm(denominator, g, lambda, n_pow_2);
+                    mpz_sub_ui(denominator, denominator, 1);
+                    mpz_div(denominator, denominator, n);
+                    mpz_invert(denominator, denominator, n);
+                    mpz_mul(numerator, numerator, denominator);
+                    mpz_mod(numerator, numerator, n);
+                    mpz_int v = numerator;
+                    cpp_int s1 = v.convert_to<cpp_int>();
 
-                //    cpp_int inverse_n = mod_inverse(n.data.template convert_to<cpp_int>(), lambda.data.template convert_to<cpp_int>());
-                //    cpp_int inverse_g = mod_inverse(op.pow(g.data.template convert_to<cpp_int>(), s1), n.data.template convert_to<cpp_int>());
-                //    cpp_int s2 = cpp_int(cpp_mod(op.pow(hash_function_result * inverse_g, inverse_n), n.data.template convert_to<cpp_int>()));
+                    mpz_t inverse_n;
+                    mpz_init(inverse_n);
+                    mpz_invert(inverse_n, n, lambda);
+                    mpz_t inverse_g;
+                    mpz_init(inverse_g);
+                    mpz_invert(inverse_g, g, lambda);
+                    mpz_mul(inverse_g, inverse_g, hash_result);
+                    mpz_powm(inverse_g, inverse_g, inverse_n, n);
+                    v = inverse_g;
+                    cpp_int s2 = v.convert_to<cpp_int>();
 
-                //    return make_pair(s1, s2);
-                //}
+                    mpz_clear(hash_result);
+                    mpz_clear(n_pow_2);
+                    mpz_clear(numerator);
+                    mpz_clear(denominator);
+                    mpz_clear(inverse_n);
+                    mpz_clear(inverse_g);
+
+
+                    return make_pair(s1, s2);
+                }
             private:
                 mpz_t lambda;
                 mpz_t mu;
@@ -334,7 +376,7 @@ namespace nil {
                 typedef typename FieldType::value_type value_type;
                 typedef typename FieldType::value_type::data_type data_type;
                 typedef typename Hash::digest_type digest_type;
-                const size_t bits = 5;// FieldType::modulus_bits;
+                const size_t bits = FieldType::modulus_bits;
 
                 paillier_public_key<FieldType, Generator, Hash> public_key;
                 paillier_private_key<FieldType, Generator, Hash> private_key;
@@ -396,6 +438,7 @@ namespace nil {
                     mpz_init(mpz_t_max_value);
                     gmp_randstate_t rstate;
                     gmp_randinit_mt(rstate);
+                    gmp_randseed_ui(rstate, time(0));
                     mpz_init_set_str(mpz_t_max_value, max_value.str().c_str(), 10);
                     do {
                         mpz_rrandomb(p, rstate, bits);
@@ -416,7 +459,7 @@ namespace nil {
                         mpz_mul(gcd_first_part, p_minus_1, q_minus_1);
                         mpz_mul(gcd_second_part, p, q);
                         mpz_gcd(gcd_result, gcd_first_part, gcd_second_part);
-                    } while ((mpz_cmp_ui(gcd_result, 1) != 0) || mpz_cmp(p, mpz_t_max_value) > 0);
+                    } while ((mpz_cmp_ui(gcd_result, 1) != 0) || mpz_cmp(p, mpz_t_max_value) > 0 || mpz_cmp(p, q) == 0);
 
                     mpz_clear(mpz_t_max_value);
                     mpz_clear(p_minus_1);
@@ -449,6 +492,7 @@ namespace nil {
                     mpz_init(g);
                     gmp_randstate_t rstate;
                     gmp_randinit_mt(rstate);
+                    gmp_randseed_ui(rstate, time(0));
                     mpz_t n_pow_2;
                     mpz_init(n_pow_2);
                     mpz_mul(n_pow_2, n, n);
@@ -473,10 +517,27 @@ namespace nil {
                     mpz_init(u);
                     mpz_init(n_pow_2);
                     mpz_mul(n_pow_2, n, n);
-                    mpz_powm(mu, g, lambda, n_pow_2);
-                    mpz_sub_ui(mu, mu, 1);
-                    mpz_div(mu, mu, n);
-                    mpz_invert(mu, mu, n);
+                    
+                    mpz_t mu_invert;
+                    mpz_init(mu_invert);
+                    while (true) {
+                        mpz_powm(mu, g, lambda, n_pow_2);
+                        mpz_sub_ui(mu, mu, 1);
+                        mpz_div(mu, mu, n);
+                        mpz_set(mu_invert, mu);
+                        mpz_invert(mu_invert, mu, n);
+                        mpz_mul(mu_invert, mu_invert, mu);
+                        mpz_mod(mu_invert, mu_invert, n);
+                        if (mpz_cmp_ui(mu_invert, 1) == 0) {
+                            mpz_invert(mu, mu, n);
+                            break;
+                        }
+                        else {
+                            generate_g();
+                        }
+                    }
+
+                    mpz_clear(mu_invert);
                     mpz_clear(n_pow_2);
                 }
 

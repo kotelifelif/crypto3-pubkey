@@ -37,7 +37,8 @@
 #include <nil/crypto3/algebra/fields/alt_bn128/scalar_field.hpp>
 #include <nil/crypto3/multiprecision/cpp_modular.hpp>
 #include <nil/crypto3/multiprecision/miller_rabin.hpp>
-#include <nil/crypto3/multiprecision/cpp_dec_float.hpp>
+
+#include <nil/crypto3/multiprecision/gmp.hpp>
 
 using namespace std;
 using namespace nil::crypto3::multiprecision;
@@ -90,20 +91,40 @@ namespace nil {
 
                     size_t value_bits_size(bits);
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
-                    cpp_int min_value = op.pow(cpp_int(2), cpp_int(value_bits_size - 1));
                     cpp_int max_value = op.pow(cpp_int(2), cpp_int(value_bits_size)) - cpp_int(1);
 
-                    cpp_int p = get_miller_rabin_test_prime(min_value, max_value, iterations_number);
-                    cpp_int q = p;
+                    mpz_t p; 
+                    mpz_t q;
+                    mpz_t mpz_t_max_value;
+                    mpz_inits(p, q,mpz_t_max_value);
+                    gmp_randstate_t rstate;
+                    gmp_randinit_mt(rstate);
+                    mpz_init_set_str(mpz_t_max_value, max_value.str().c_str(), 10);
+                    do {
+                        mpz_rrandomb(p, rstate, bits);
+                        mpz_nextprime(p, p);
+                    } while (p > mpz_t_max_value);
 
-                    while (true) {
-                        q = get_miller_rabin_test_prime(min_value, max_value, iterations_number);
-                        if ((op.gcd(p * q, (p - 1) * (q - 1)) == cpp_int(1)) && (p != q)) {
-                            break;
-                        }
-                    }
+                    mpz_t p_minus_1, q_minus_1, gcd_first_part, gcd_second_part, gcd_result;
+                    mpz_inits(p_minus_1, q_minus_1, gcd_first_part, gcd_second_part, gcd_result);
+                    do {                        
+                        mpz_rrandomb(q, rstate, bits);
+                        mpz_nextprime(q, q);
+                        mpz_sub_ui(p_minus_1, p, 1);
+                        mpz_sub_ui(q_minus_1, q, 1);
+                        mpz_mul(gcd_first_part, p_minus_1, q_minus_1);
+                        mpz_mul(gcd_second_part, p, q);
+                        mpz_gcd(gcd_result, gcd_first_part, gcd_second_part);
+                    } while ((mpz_cmp_ui(gcd_result, 1) != 0) || q > mpz_t_max_value);
 
-                    primes = make_pair(p, q);
+                    mpz_clear(mpz_t_max_value);
+                    mpz_clear(p_minus_1);
+                    mpz_clear(q_minus_1);
+                    mpz_clear(gcd_first_part);
+                    mpz_clear(gcd_second_part);
+                    mpz_clear(gcd_result);
+                    gmp_randclear(rstate);
+
                     return primes;
                 }
             private:
