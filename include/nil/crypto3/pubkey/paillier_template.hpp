@@ -343,12 +343,17 @@ namespace nil {
                     mpz_int v = numerator;
                     cpp_int s1 = v.convert_to<cpp_int>();
 
+                    mpz_t copy_s1;
+                    mpz_init(copy_s1);
+                    mpz_set_str(copy_s1, s1.str().c_str(), 10);
                     mpz_t inverse_n;
                     mpz_init(inverse_n);
                     mpz_invert(inverse_n, n, lambda);
                     mpz_t inverse_g;
                     mpz_init(inverse_g);
-                    mpz_invert(inverse_g, g, lambda);
+                    mpz_powm(inverse_g, g, copy_s1, n);
+                    mpz_invert(inverse_g, inverse_g, n);
+                    mpz_powm(g, g, copy_s1, n);
                     mpz_mul(inverse_g, inverse_g, hash_result);
                     mpz_powm(inverse_g, inverse_g, inverse_n, n);
                     v = inverse_g;
@@ -360,6 +365,7 @@ namespace nil {
                     mpz_clear(denominator);
                     mpz_clear(inverse_n);
                     mpz_clear(inverse_g);
+                    mpz_clear(copy_s1);
 
 
                     return make_pair(s1, s2);
