@@ -29,22 +29,8 @@
 #include "algebraic_operations.hpp"
 #include "generating_operations.hpp"
 
-#include <deque>
-#include <algorithm>
-#include <random>
-#include <iostream>
-#include <typeinfo>
-
-#include <boost/integer/mod_inverse.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
-
-#include <nil/crypto3/multiprecision/random.hpp>
-#include <nil/crypto3/algebra/random_element.hpp>
-#include <nil/crypto3/multiprecision/cpp_modular.hpp>
-#include <nil/crypto3/multiprecision/miller_rabin.hpp>
-#include <nil/crypto3/multiprecision/cpp_dec_float.hpp>
+#include <vector>
 #include <nil/crypto3/hash/algorithm/hash.hpp>
-
 #include <nil/crypto3/multiprecision/gmp.hpp>
 
 using namespace std;
@@ -59,11 +45,13 @@ namespace nil {
     namespace crypto3 {
         namespace pubkey {
 
-            template<typename FieldType, typename Generator, typename Hash>
+            template<typename FieldType, typename Hash>
             struct paillier_public_key {
                 typedef typename FieldType::value_type value_type;
                 typedef typename value_type::data_type data_type;
                 typedef typename Hash::digest_type digest_type;
+                typedef std::vector<value_type> internal_accumulator_type;
+                typedef std::vector<cpp_int> cipher_text;
                 const size_t bits = FieldType::modulus_bits;
 
                 paillier_public_key() {
@@ -83,14 +71,14 @@ namespace nil {
                     mpz_set(this->g, g);
                 }
 
-                paillier_public_key(const paillier_public_key<FieldType, Generator, Hash>& key) {
+                paillier_public_key(const paillier_public_key<FieldType, Hash>& key) {
                     mpz_init(this->n);
                     mpz_init(this->g);
                     mpz_set(this->n, key.n);
                     mpz_set(this->g, key.g);
                 }
                 
-                paillier_public_key& operator=(const paillier_public_key<FieldType, Generator, Hash>& key) {
+                paillier_public_key& operator=(const paillier_public_key<FieldType, Hash>& key) {
                     mpz_init(this->n);
                     mpz_init(this->g);
                     mpz_set(this->n, key.n);
@@ -98,14 +86,14 @@ namespace nil {
                     return *this;
                 }
 
-                paillier_public_key(paillier_public_key<FieldType, Generator, Hash>&& key) {
+                paillier_public_key(paillier_public_key<FieldType, Hash>&& key) {
                     mpz_init(this->n);
                     mpz_init(this->g);
                     mpz_set(this->n, key.n);
                     mpz_set(this->g, key.g);
                 }
 
-                paillier_public_key& operator=(paillier_public_key<FieldType, Generator, Hash>&& key) {
+                paillier_public_key& operator=(paillier_public_key<FieldType, Hash>&& key) {
                     mpz_init(this->n);
                     mpz_init(this->g);
                     mpz_set(this->n, key.n);
@@ -113,50 +101,52 @@ namespace nil {
                     return *this;
                 }
 
-                cpp_int encrypt(value_type& message) {
-                    mpz_t mpz_t_message;
-                    mpz_init_set_str(mpz_t_message, message.data.template convert_to<cpp_int>().str().c_str(), 10);
-                    if (mpz_cmp(mpz_t_message, this->n) > 0) {
-                        mpz_clear(mpz_t_message);
-                        return cpp_int(0);
+                cipher_text encrypt(internal_accumulator_type& message) {                    
+                    cipher_text encrypted_text;
+                    for (auto& letter : message) {
+                        mpz_t mpz_letter;
+                        mpz_init_set_str(mpz_letter, letter.data.template convert_to<cpp_int>().str().c_str(), 10);
+                        if (mpz_cmp(mpz_letter, this->n) > 0) {
+                            mpz_clear(mpz_letter);
+                            return cipher_text{};
+                        }
+
+                        mpz_t n_pow_2;
+                        mpz_init(n_pow_2);
+                        mpz_mul(n_pow_2, n, n);
+                        mpz_t r;
+                        mpz_init(r);
+                        gmp_randstate_t rstate;
+                        gmp_randinit_mt(rstate);
+                        gmp_randseed_ui(rstate, time(0));
+                        mpz_urandomm(r, rstate, n);
+                        mpz_add_ui(r, r, 1);
+
+                        mpz_t encrypt;
+                        mpz_t first_part;
+                        mpz_t second_part;
+                        mpz_init(encrypt);
+                        mpz_init(first_part);
+                        mpz_init(second_part);
+                        mpz_powm(first_part, g, mpz_letter, n_pow_2);
+                        mpz_powm(second_part, r, n, n_pow_2);
+                        mpz_mul(encrypt, first_part, second_part);
+                        mpz_mod(encrypt, encrypt, n_pow_2);
+
+                        mpz_int encrypt_letter = encrypt;
+                        encrypted_text.push_back(encrypt_letter.convert_to<cpp_int>());
+
+                        gmp_randclear(rstate);
+                        mpz_clear(first_part);
+                        mpz_clear(second_part);
+                        mpz_clear(encrypt);
+                        mpz_clear(n_pow_2);
+                        mpz_clear(mpz_letter);
                     }
-                    
-                    mpz_t n_pow_2;
-                    mpz_init(n_pow_2);
-                    mpz_mul(n_pow_2, n, n);
-                    mpz_t r;
-                    mpz_init(r);
-                    gmp_randstate_t rstate;
-                    gmp_randinit_mt(rstate);
-                    gmp_randseed_ui(rstate, time(0));
-                    mpz_urandomm(r, rstate, n);
-                    mpz_add_ui(r, r, 1);
-
-                    mpz_t encrypt;
-                    mpz_t first_part;
-                    mpz_t second_part;
-                    mpz_init(encrypt);
-                    mpz_init(first_part);
-                    mpz_init(second_part);
-                    mpz_powm(first_part, g, mpz_t_message, n_pow_2);
-                    mpz_powm(second_part, r, n, n_pow_2);
-                    mpz_mul(encrypt, first_part, second_part);
-                    mpz_mod(encrypt, encrypt, n_pow_2);
-
-                    mpz_int v = encrypt;
-                    //value_type encrypt_message = value_type(v.convert_to<cpp_int>());
-                    
-                    gmp_randclear(rstate);
-                    mpz_clear(first_part);
-                    mpz_clear(second_part);
-                    mpz_clear(encrypt);
-                    mpz_clear(n_pow_2);
-                    mpz_clear(mpz_t_message);
-
-                    return v.convert_to<cpp_int>();
+                    return encrypted_text;
                   }
 
-                bool verify(cpp_int& s1, cpp_int& s2, cpp_int& message) {
+                bool verify(cpp_int& s1, cpp_int& s2, internal_accumulator_type& message) {
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
                     mpz_t n_pow_2;
                     mpz_init(n_pow_2);
@@ -182,7 +172,13 @@ namespace nil {
                     mpz_int mpz_int_value = mpz_value;
                     cpp_int value = mpz_int_value.convert_to<cpp_int>();
                     
-                    digest_type hashed_message = nil::crypto3::hash<Hash>(message.str());
+                    std::string string_message;
+                    for (auto& letter : message) {
+                        string_message.insert(string_message.size(), letter.data.template convert_to<cpp_int>().str());
+                        string_message.push_back(' ');
+                    }
+                    string_message.pop_back();
+                    digest_type hashed_message = nil::crypto3::hash<Hash>(string_message);
                     string string_hashed_message = to_string(hashed_message);
                     cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
 
@@ -206,11 +202,14 @@ namespace nil {
                 mpz_t g;
             };
 
-            template<typename FieldType, typename Generator, typename Hash>
+            template<typename FieldType, typename Hash>
             struct paillier_private_key {
                 typedef typename FieldType::value_type value_type;
                 typedef typename value_type::data_type data_type;
                 typedef typename Hash::digest_type digest_type;
+                typedef std::vector<cpp_int> internal_accumulator_type;
+                typedef std::vector<cpp_int> decipher_text;
+                typedef pair<cpp_int, cpp_int> signature_type;
                 const size_t bits = FieldType::modulus_bits;
 
 
@@ -221,7 +220,7 @@ namespace nil {
                     mpz_init(mu);
                 }
 
-                paillier_private_key(const paillier_private_key<FieldType, Generator, Hash>& key) {
+                paillier_private_key(const paillier_private_key<FieldType, Hash>& key) {
                     mpz_init(n);
                     mpz_init(g);
                     mpz_init(lambda);
@@ -232,7 +231,7 @@ namespace nil {
                     mpz_set(g, key.g);
                 }
 
-                paillier_private_key& operator=(const paillier_private_key<FieldType, Generator, Hash>& key) {
+                paillier_private_key& operator=(const paillier_private_key<FieldType, Hash>& key) {
                     mpz_init(n);
                     mpz_init(g);
                     mpz_init(lambda);
@@ -251,7 +250,7 @@ namespace nil {
                     mpz_clear(mu);
                 }
 
-                paillier_private_key(paillier_private_key<FieldType, Generator, Hash>&& key) {
+                paillier_private_key(paillier_private_key<FieldType, Hash>&& key) {
                     mpz_init(this->n);
                     mpz_init(this->g);
                     mpz_init(this->lambda);
@@ -262,7 +261,7 @@ namespace nil {
                     mpz_set(g, key.g);
                 }
 
-                paillier_private_key& operator=(paillier_private_key<FieldType, Generator, Hash>&& key) {
+                paillier_private_key& operator=(paillier_private_key<FieldType, Hash>&& key) {
                     mpz_init(this->n);
                     mpz_init(this->g);
                     mpz_init(this->lambda);
@@ -285,37 +284,45 @@ namespace nil {
                     mpz_set(this->g, g);
                 }
 
-                cpp_int decrypt(cpp_int& message) {
-                    nil::crypto3::pubkey::algebraic_operations<FieldType> op;
-                    mpz_t n_pow_2;
-                    mpz_init(n_pow_2);
-                    mpz_mul(n_pow_2, n, n);
-                    mpz_t mpz_t_message;
-                    mpz_init_set_str(mpz_t_message, message.str().c_str(), 10);
+                decipher_text decrypt(internal_accumulator_type& message) {
+                    decipher_text decrypted_text;
+                    for (auto& letter : message) {
+                        mpz_t n_pow_2;
+                        mpz_init(n_pow_2);
+                        mpz_mul(n_pow_2, n, n);
+                        mpz_t mpz_letter;
+                        mpz_init_set_str(mpz_letter, letter.str().c_str(), 10);
 
-                    if (mpz_cmp(mpz_t_message, n_pow_2) > 0) {
-                        mpz_clear(mpz_t_message);
+                        if (mpz_cmp(mpz_letter, n_pow_2) > 0) {
+                            mpz_clear(mpz_letter);
+                            mpz_clear(n_pow_2);
+                            return decipher_text{cpp_int(0)};
+                        }
+
+                        mpz_powm(mpz_letter, mpz_letter, lambda, n_pow_2);
+                        mpz_sub_ui(mpz_letter, mpz_letter, 1);
+                        mpz_div(mpz_letter, mpz_letter, n);
+                        mpz_mul(mpz_letter, mpz_letter, mu);
+                        mpz_mod(mpz_letter, mpz_letter, n);
+
+
+                        mpz_int decrypted_letter = mpz_letter;
+                        decrypted_text.push_back(decrypted_letter.convert_to<cpp_int>());
+
+                        mpz_clear(mpz_letter);
                         mpz_clear(n_pow_2);
-                        return cpp_int(0);
                     }
-
-                    mpz_powm(mpz_t_message, mpz_t_message, lambda, n_pow_2);
-                    mpz_sub_ui(mpz_t_message, mpz_t_message, 1);
-                    mpz_div(mpz_t_message, mpz_t_message, n);
-                    mpz_mul(mpz_t_message, mpz_t_message, mu);
-                    mpz_mod(mpz_t_message, mpz_t_message, n);
-
-                
-                    mpz_int v = mpz_t_message;
-
-                    //value_type decrypt_message = value_type(v.convert_to<cpp_int>());
-                    mpz_clear(mpz_t_message);
-                    mpz_clear(n_pow_2);
-                    return v.convert_to<cpp_int>();
+                    return decrypted_text;
                 }
 
-                pair<cpp_int, cpp_int> sign(value_type& message) {
-                    digest_type hashed_message = nil::crypto3::hash<Hash>(message.data.template convert_to<cpp_int>().str());
+                signature_type sign(internal_accumulator_type& message) {
+                    std::string string_message;
+                    for (auto& letter : message) {
+                        string_message.insert(string_message.size(), letter.str());
+                        string_message.push_back(' ');
+                    }
+                    string_message.pop_back();
+                    digest_type hashed_message = nil::crypto3::hash<Hash>(string_message);
                     nil::crypto3::pubkey::algebraic_operations<FieldType> op;
                     string string_hashed_message = to_string(hashed_message);
                     cpp_int hash_function_result = op.hex_to_dec(string_hashed_message);
@@ -377,15 +384,15 @@ namespace nil {
                 mpz_t g;
             };
 
-            template<typename FieldType, typename Generator, typename Hash>
+            template<typename FieldType, typename Hash>
             struct paillier {
                 typedef typename FieldType::value_type value_type;
                 typedef typename FieldType::value_type::data_type data_type;
                 typedef typename Hash::digest_type digest_type;
                 const size_t bits = FieldType::modulus_bits;
 
-                paillier_public_key<FieldType, Generator, Hash> public_key;
-                paillier_private_key<FieldType, Generator, Hash> private_key;
+                paillier_public_key<FieldType, Hash> public_key;
+                paillier_private_key<FieldType, Hash> private_key;
 
                 ~paillier() {
                     mpz_clear(p);
@@ -396,20 +403,14 @@ namespace nil {
                     mpz_clear(mu);
                 }
                 
-                paillier(const int iterations_number = 20) {
+                paillier() {
                     generate_primes();
-                    gmp_printf("p %Zi \n", &p);
-                    gmp_printf("q %Zi \n", &q);
                     generate_n();
-                    gmp_printf("n %Zi \n", &n);
                     generate_lambda();
-                    gmp_printf("lambda %Zi \n", &lambda);
                     generate_g();
-                    gmp_printf("g %Zi \n", &g);
                     generate_mu();
-                    gmp_printf("mu %Zi \n", &mu);
-                    public_key = paillier_public_key<FieldType, Generator, Hash>(n, g);
-                    private_key = paillier_private_key<FieldType, Generator, Hash>(lambda, mu, n, g);
+                    public_key = paillier_public_key<FieldType, Hash>(n, g);
+                    private_key = paillier_private_key<FieldType, Hash>(lambda, mu, n, g);
                 }
                 paillier(value_type& first_prime, value_type& second_prime) {
                     mpz_init(p);
@@ -420,8 +421,8 @@ namespace nil {
                     generate_lambda();
                     generate_g();
                     generate_mu();
-                    public_key = paillier_public_key<FieldType, Generator, Hash>(n, g);
-                    private_key = paillier_private_key<FieldType, Generator, Hash>(lambda, mu, n);
+                    public_key = paillier_public_key<FieldType, Hash>(n, g);
+                    private_key = paillier_private_key<FieldType, Hash>(lambda, mu, n);
                 }
 
             private:

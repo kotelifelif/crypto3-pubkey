@@ -47,8 +47,6 @@ using namespace boost::math;
 using cpp_mod = nil::crypto3::multiprecision::cpp_mod;
 using cpp_int = nil::crypto3::multiprecision::cpp_int;
 using field = nil::crypto3::algebra::fields::alt_bn128_fq<254>;
-//using value_type = nil::crypto3::algebra::fields::alt_bn128_fq<254>::value_type;
-//using data_type = nil::crypto3::algebra::fields::alt_bn128_fq<254>::value_type::data_type;
 
 namespace nil {
     namespace crypto3 {
