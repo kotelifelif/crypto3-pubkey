@@ -178,6 +178,11 @@ BOOST_AUTO_TEST_CASE(paillier_sign_verify_with_different_hashes_test) {
 	value_type_message = convert_to_value_type<value_type>(message);
 	verified = paillier_md.public_key.verify(signs.first, signs.second, value_type_message);
 	BOOST_CHECK(!verified);
+    
+	message[0] += 1;
+    value_type_message = convert_to_value_type<value_type>(message);
+    verified = paillier_md.public_key.verify(signs.first, signs.second, value_type_message);
+    BOOST_CHECK(verified);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
