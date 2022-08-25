@@ -38,7 +38,7 @@
 #include <nil/crypto3/hash/sha2.hpp>
 #include <nil/crypto3/hash/md5.hpp>
 
-#include "paillier_template.hpp"
+#include "paillier.hpp"
 
 using namespace std;
 
